@@ -1,0 +1,1012 @@
+"use client"
+
+import { useState, useCallback, useEffect } from "react"
+import {
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import { arrayMove } from "@dnd-kit/sortable"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { DraggableBlock } from "./draggable-block"
+import { RuleDropZone } from "./rule-drop-zone"
+import {
+  blockConfigs,
+  conditionBlocks,
+  actionBlocks,
+  tradingPairs,
+  type BlockConfig,
+  type BlockType,
+  type BlockCategory,
+} from "./block-types"
+import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { predefinedStrategies, type StrategyTemplate } from "@/lib/predefined-strategies"
+import { getStrategyById, saveStrategyToStorage } from "@/lib/strategy-storage"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+interface CanvasItem {
+  id: string
+  config: BlockConfig
+  values: Record<string, string | number>
+}
+
+interface RuleGroup {
+  id: string
+  name: string
+  conditionItems: CanvasItem[]
+  actionItems: CanvasItem[]
+}
+
+interface StrategyJsonResult {
+  success: boolean
+  data?: any
+  errors?: string[]
+}
+
+interface StrategyBuilderProps {
+  strategyId?: string
+}
+
+function parseStrategyToRuleGroups(parsed: {
+  strategyName: string
+  symbols: string[]
+  rules: any[]
+}): { ruleGroups: RuleGroup[]; strategyName: string; symbols: string[] } {
+  const newRuleGroups: RuleGroup[] = parsed.rules.map((rule: any, ruleIndex: number) => {
+    const conditionItems: CanvasItem[] = (rule.conditions || [])
+      .map((condition: any) => {
+        const blockType = condition.type as BlockType
+        const config = blockConfigs[blockType]
+
+        if (!config) {
+          console.warn(`Unknown block type: ${blockType}`)
+          return null
+        }
+
+        const values: Record<string, string | number> = {}
+
+        if (blockType === "increased-by" || blockType === "decreased-by") {
+          values.indicator = condition.indicator1 || ""
+          values.candles = condition.timeframe1 || ""
+          values.value = condition.value || ""
+        } else if (
+          blockType === "crossing-above" ||
+          blockType === "crossing-below" ||
+          blockType === "greater-than" ||
+          blockType === "lower-than"
+        ) {
+          values.indicator1 = condition.indicator1 || ""
+          values.candles1 = condition.timeframe1 || ""
+          values.indicator2 = condition.indicator2 || ""
+          values.candles2 = condition.timeframe2 || ""
+        }
+
+        return {
+          id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          config,
+          values,
+        }
+      })
+      .filter(Boolean) as CanvasItem[]
+
+    const actionItems: CanvasItem[] = (rule.actions || [])
+      .map((action: any) => {
+        let blockType: BlockType
+        if (action.action === "BUY") {
+          blockType = "open-position"
+        } else if (action.action === "SELL") {
+          blockType = "close-position"
+        } else if (action.action === "NOTIFY") {
+          blockType = "notify-me"
+        } else {
+          return null
+        }
+
+        const config = blockConfigs[blockType]
+        if (!config) return null
+
+        const values: Record<string, string | number> = {}
+        if (action.options) {
+          if (blockType === "open-position" || blockType === "close-position") {
+            values.amount = action.options.amount || ""
+            values.unit = action.options.unit || "USD"
+          } else if (blockType === "notify-me") {
+            values.channel = action.options.channel || ""
+            values.message = action.options.message || ""
+          }
+        }
+
+        return {
+          id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          config,
+          values,
+        }
+      })
+      .filter(Boolean) as CanvasItem[]
+
+    return {
+      id: `rule-${ruleIndex + 1}`,
+      name: rule.name || `Rule ${ruleIndex + 1}`,
+      conditionItems,
+      actionItems,
+    }
+  })
+
+  return {
+    ruleGroups:
+      newRuleGroups.length > 0
+        ? newRuleGroups
+        : [{ id: "rule-1", name: "Rule 1", conditionItems: [], actionItems: [] }],
+    strategyName: parsed.strategyName,
+    symbols: parsed.symbols,
+  }
+}
+
+export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
+  const [strategyName, setStrategyName] = useState("New Strategy")
+  const [selectedPairs, setSelectedPairs] = useState<string[]>(["BTC/USD"])
+  const [ruleGroups, setRuleGroups] = useState<RuleGroup[]>([
+    { id: "rule-1", name: "Rule 1", conditionItems: [], actionItems: [] },
+  ])
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeConfig, setActiveConfig] = useState<BlockConfig | null>(null)
+  const [previewJson, setPreviewJson] = useState<string | null>(null)
+  const [pairPopoverOpen, setPairPopoverOpen] = useState(false)
+  const [blockCategory, setBlockCategory] = useState<BlockCategory>("condition")
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importJson, setImportJson] = useState("")
+  const [importError, setImportError] = useState<string | null>(null)
+  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false)
+  const [mobileBlockPickerOpen, setMobileBlockPickerOpen] = useState(false)
+  const [mobileBlockPickerTarget, setMobileBlockPickerTarget] = useState<{
+    groupId: string
+    category: BlockCategory
+  } | null>(null)
+  const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(strategyId || null)
+
+  const loadStrategyFromJson = useCallback(
+    (parsed: {
+      strategyName: string
+      symbols: string[]
+      rules: any[]
+    }) => {
+      const { ruleGroups: newRuleGroups, strategyName: name, symbols } = parseStrategyToRuleGroups(parsed)
+      setStrategyName(name)
+      setSelectedPairs(symbols)
+      setRuleGroups(newRuleGroups)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (strategyId) {
+      const savedStrategy = getStrategyById(strategyId)
+      if (savedStrategy) {
+        setCurrentStrategyId(strategyId)
+        loadStrategyFromJson({
+          strategyName: savedStrategy.strategyName,
+          symbols: savedStrategy.symbols,
+          rules: savedStrategy.rules,
+        })
+      }
+    }
+  }, [strategyId, loadStrategyFromJson])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    setActiveId(String(active.id))
+    if (active.data.current?.config) {
+      setActiveConfig(active.data.current.config)
+    }
+  }
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+    setActiveConfig(null)
+
+    if (!over) return
+
+    const overId = String(over.id)
+
+    if (String(active.id).startsWith("sidebar-")) {
+      const blockType = active.data.current?.type as BlockType
+      const config = blockConfigs[blockType]
+
+      // Check if dropping to conditions or actions
+      const isConditionsZone = overId.endsWith("-conditions")
+      const isActionsZone = overId.endsWith("-actions")
+
+      if (!isConditionsZone && !isActionsZone) return
+
+      // Validate block category matches zone
+      if (isConditionsZone && config.category !== "condition") return
+      if (isActionsZone && config.category !== "action") return
+
+      const ruleId = overId.replace("-conditions", "").replace("-actions", "")
+
+      const newItem: CanvasItem = {
+        id: `item-${Date.now()}`,
+        config,
+        values: {},
+      }
+
+      config.parameters.forEach((param) => {
+        if (param.default !== undefined) {
+          newItem.values[param.name] = param.default
+        }
+      })
+
+      setRuleGroups((prev) =>
+        prev.map((group) => {
+          if (group.id === ruleId) {
+            if (isConditionsZone) {
+              return { ...group, conditionItems: [...group.conditionItems, newItem] }
+            } else {
+              return { ...group, actionItems: [...group.actionItems, newItem] }
+            }
+          }
+          return group
+        }),
+      )
+      return
+    }
+
+    // Handle reordering within the same zone
+    if (String(active.id).startsWith("item-") && String(over.id).startsWith("item-")) {
+      setRuleGroups((prev) =>
+        prev.map((group) => {
+          // Check conditions
+          const condOldIndex = group.conditionItems.findIndex((item) => item.id === active.id)
+          const condNewIndex = group.conditionItems.findIndex((item) => item.id === over.id)
+          if (condOldIndex !== -1 && condNewIndex !== -1 && condOldIndex !== condNewIndex) {
+            return { ...group, conditionItems: arrayMove(group.conditionItems, condOldIndex, condNewIndex) }
+          }
+
+          // Check actions
+          const actOldIndex = group.actionItems.findIndex((item) => item.id === active.id)
+          const actNewIndex = group.actionItems.findIndex((item) => item.id === over.id)
+          if (actOldIndex !== -1 && actNewIndex !== -1 && actOldIndex !== actNewIndex) {
+            return { ...group, actionItems: arrayMove(group.actionItems, actOldIndex, actNewIndex) }
+          }
+
+          return group
+        }),
+      )
+    }
+  }, [])
+
+  const handleRemoveBlock = (groupId: string, itemId: string, category: BlockCategory) => {
+    setRuleGroups((prev) =>
+      prev.map((group) => {
+        if (group.id === groupId) {
+          if (category === "condition") {
+            return { ...group, conditionItems: group.conditionItems.filter((item) => item.id !== itemId) }
+          } else {
+            return { ...group, actionItems: group.actionItems.filter((item) => item.id !== itemId) }
+          }
+        }
+        return group
+      }),
+    )
+  }
+
+  const handleValueChange = (
+    groupId: string,
+    itemId: string,
+    name: string,
+    value: string | number,
+    category: BlockCategory,
+  ) => {
+    setRuleGroups((prev) =>
+      prev.map((group) => {
+        if (group.id === groupId) {
+          if (category === "condition") {
+            return {
+              ...group,
+              conditionItems: group.conditionItems.map((item) =>
+                item.id === itemId ? { ...item, values: { ...item.values, [name]: value } } : item,
+              ),
+            }
+          } else {
+            return {
+              ...group,
+              actionItems: group.actionItems.map((item) =>
+                item.id === itemId ? { ...item, values: { ...item.values, [name]: value } } : item,
+              ),
+            }
+          }
+        }
+        return group
+      }),
+    )
+  }
+
+  const addRuleGroup = () => {
+    const count = ruleGroups.length + 1
+    setRuleGroups((prev) => [
+      ...prev,
+      { id: `rule-${Date.now()}`, name: `Rule ${count}`, conditionItems: [], actionItems: [] },
+    ])
+  }
+
+  const removeRuleGroup = (id: string) => {
+    setRuleGroups((prev) => prev.filter((group) => group.id !== id))
+  }
+
+  const handleReset = () => {
+    setRuleGroups([{ id: "rule-1", name: "Rule 1", conditionItems: [], actionItems: [] }])
+    setStrategyName("New Strategy")
+    setSelectedPairs(["BTC/USD"])
+  }
+
+  const handleDeploy = () => {
+    const result = generateStrategyJson()
+
+    if (!result.success) {
+      alert("Please fix all validation errors before deploying:\n" + result.errors?.join("\n"))
+      return
+    }
+
+    const strategyToSave = {
+      ...result.data!,
+      strategyId: currentStrategyId || result.data!.strategyId,
+    }
+
+    saveStrategyToStorage(strategyToSave)
+
+    setCurrentStrategyId(strategyToSave.strategyId)
+
+    alert("Strategy deployed successfully!")
+  }
+
+  const generateStrategyJson = (): StrategyJsonResult => {
+    const errors: string[] = []
+
+    if (!strategyName || strategyName.trim() === "") {
+      errors.push("Strategy name is required")
+    }
+
+    if (selectedPairs.length === 0) {
+      errors.push("At least one trading pair is required")
+    }
+
+    const hasBlocks = ruleGroups.some((g) => g.conditionItems.length > 0 || g.actionItems.length > 0)
+    if (!hasBlocks) {
+      errors.push("At least one rule with conditions or actions is required")
+    }
+
+    const rules = ruleGroups.map((group) => {
+      const conditions = group.conditionItems.map((item, itemIndex) => {
+        const condition: Record<string, any> = {
+          index: itemIndex,
+          type: item.config.type,
+        }
+
+        const blockLabel = `${group.name}, Condition ${itemIndex + 1} (${item.config.label})`
+
+        if (
+          item.config.type === "crossing-above" ||
+          item.config.type === "crossing-below" ||
+          item.config.type === "greater-than" ||
+          item.config.type === "lower-than"
+        ) {
+          if (!item.values.indicator1) errors.push(`${blockLabel}: First indicator is required`)
+          if (!item.values.candles1) errors.push(`${blockLabel}: First candles timeframe is required`)
+          if (!item.values.indicator2) errors.push(`${blockLabel}: Second indicator is required`)
+          if (!item.values.candles2) errors.push(`${blockLabel}: Second candles timeframe is required`)
+          condition.indicator1 = item.values.indicator1
+          condition.timeframe1 = item.values.candles1
+          condition.indicator2 = item.values.indicator2
+          condition.timeframe2 = item.values.candles2
+        } else if (item.config.type === "increased-by" || item.config.type === "decreased-by") {
+          if (!item.values.indicator) errors.push(`${blockLabel}: Indicator is required`)
+          if (!item.values.candles) errors.push(`${blockLabel}: Candles timeframe is required`)
+          if (item.values.value === undefined || item.values.value === "")
+            errors.push(`${blockLabel}: Percentage value is required`)
+          condition.indicator1 = item.values.indicator
+          condition.timeframe1 = item.values.candles
+          condition.value = item.values.value
+        }
+        return condition
+      })
+
+      const actions = group.actionItems.map((item, itemIndex) => {
+        const blockLabel = `${group.name}, Action ${itemIndex + 1} (${item.config.label})`
+
+        if (item.config.type === "open-position") {
+          if (item.values.amount === undefined || item.values.amount === "")
+            errors.push(`${blockLabel}: Amount is required`)
+          if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
+          return {
+            index: itemIndex,
+            action: "BUY" as const,
+            options: {
+              amount: item.values.amount,
+              unit: item.values.unit,
+            },
+          }
+        } else if (item.config.type === "close-position") {
+          if (item.values.amount === undefined || item.values.amount === "")
+            errors.push(`${blockLabel}: Amount is required`)
+          if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
+          return {
+            index: itemIndex,
+            action: "SELL" as const,
+            options: {
+              amount: item.values.amount,
+              unit: item.values.unit,
+            },
+          }
+        } else if (item.config.type === "notify-me") {
+          if (!item.values.channel) errors.push(`${blockLabel}: Channel is required`)
+          if (!item.values.message) errors.push(`${blockLabel}: Message is required`)
+          return {
+            index: itemIndex,
+            action: "NOTIFY" as const,
+            options: {
+              channel: item.values.channel,
+              message: item.values.message,
+            },
+          }
+        }
+        return { index: itemIndex, action: "UNKNOWN", options: {} }
+      })
+
+      return {
+        name: group.name,
+        conditions,
+        actions,
+      }
+    })
+
+    if (errors.length > 0) {
+      return { success: false, errors }
+    }
+
+    const strategyJson = {
+      strategyId: crypto.randomUUID(),
+      strategyName: strategyName.trim(),
+      symbols: selectedPairs,
+      rules,
+    }
+
+    return { success: true, data: strategyJson }
+  }
+
+  const handlePreview = () => {
+    const result = generateStrategyJson()
+
+    if (!result.success) {
+      setPreviewJson(JSON.stringify({ errors: result.errors }, null, 2))
+      return
+    }
+
+    setPreviewJson(JSON.stringify(result.data, null, 2))
+  }
+
+  const handleImportStrategy = () => {
+    setImportError(null)
+
+    if (!importJson.trim()) {
+      setImportError("Please paste a valid JSON strategy")
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(importJson)
+
+      // Validate required fields
+      if (!parsed.strategyName) {
+        setImportError("Invalid strategy: missing strategyName")
+        return
+      }
+      if (!parsed.symbols || !Array.isArray(parsed.symbols)) {
+        setImportError("Invalid strategy: missing or invalid symbols array")
+        return
+      }
+      if (!parsed.rules || !Array.isArray(parsed.rules)) {
+        setImportError("Invalid strategy: missing or invalid rules array")
+        return
+      }
+
+      loadStrategyFromJson(parsed)
+
+      // Close dialog and reset
+      setImportDialogOpen(false)
+      setImportJson("")
+      setImportError(null)
+    } catch (e) {
+      setImportError("Invalid JSON format. Please check your input.")
+    }
+  }
+
+  const handleSelectTemplate = (template: StrategyTemplate) => {
+    loadStrategyFromJson(template.strategy)
+    setTemplatesDialogOpen(false)
+  }
+
+  const handleRuleNameChange = (groupId: string, newName: string) => {
+    setRuleGroups((prev) => prev.map((group) => (group.id === groupId ? { ...group, name: newName } : group)))
+  }
+
+  const handleAddPair = (pair: string) => {
+    if (!selectedPairs.includes(pair)) {
+      setSelectedPairs((prev) => [...prev, pair])
+    }
+    setPairPopoverOpen(false)
+  }
+
+  const handleRemovePair = (pair: string) => {
+    setSelectedPairs((prev) => prev.filter((p) => p !== pair))
+  }
+
+  const handleMobileDropZoneClick = (groupId: string, category: BlockCategory) => {
+    setMobileBlockPickerTarget({ groupId, category })
+    setMobileBlockPickerOpen(true)
+  }
+
+  const handleMobileBlockSelect = (blockType: BlockType) => {
+    if (!mobileBlockPickerTarget) return
+
+    const config = blockConfigs[blockType]
+    const newItem = {
+      id: `canvas-${Date.now()}`,
+      config,
+      values: config.parameters.reduce(
+        (acc, param) => {
+          acc[param.name] = param.defaultValue || ""
+          return acc
+        },
+        {} as Record<string, string | number>,
+      ),
+    }
+
+    setRuleGroups((prev) =>
+      prev.map((group) => {
+        if (group.id !== mobileBlockPickerTarget.groupId) return group
+        if (mobileBlockPickerTarget.category === "condition") {
+          return { ...group, conditionItems: [...group.conditionItems, newItem] }
+        } else {
+          return { ...group, actionItems: [...group.actionItems, newItem] }
+        }
+      }),
+    )
+
+    setMobileBlockPickerOpen(false)
+    setMobileBlockPickerTarget(null)
+  }
+
+  const displayedBlocks = blockCategory === "condition" ? conditionBlocks : actionBlocks
+
+  return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="grid gap-6 lg:grid-cols-[300px_1fr] max-w-screen-2xl mx-auto">
+        <div className="space-y-6 hidden lg:block">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Strategy Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="strategy-name">Strategy Name</Label>
+                <Input
+                  id="strategy-name"
+                  value={strategyName}
+                  onChange={(e) => setStrategyName(e.target.value)}
+                  placeholder="Enter strategy name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Trading Pairs</Label>
+                {selectedPairs.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedPairs.map((pair) => (
+                      <div
+                        key={pair}
+                        className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
+                      >
+                        <span>{pair}</span>
+                        <button
+                          onClick={() => handleRemovePair(pair)}
+                          className="hover:bg-primary/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Popover open={pairPopoverOpen} onOpenChange={setPairPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 w-full bg-transparent">
+                      <Plus className="h-4 w-4" />
+                      Add Trading Pair
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-2" align="start">
+                    <div className="flex flex-col gap-1 max-h-60 overflow-auto">
+                      {tradingPairs
+                        .filter((pair) => !selectedPairs.includes(pair))
+                        .map((pair) => (
+                          <button
+                            key={pair}
+                            onClick={() => handleAddPair(pair)}
+                            className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                          >
+                            {pair}
+                          </button>
+                        ))}
+                      {tradingPairs.filter((pair) => !selectedPairs.includes(pair)).length === 0 && (
+                        <p className="text-sm text-muted-foreground px-3 py-2">All pairs selected</p>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Building Blocks</CardTitle>
+              <div className="flex gap-1 mt-2">
+                <Button
+                  variant={blockCategory === "condition" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBlockCategory("condition")}
+                  className={blockCategory === "condition" ? "" : "bg-transparent"}
+                >
+                  Conditions
+                </Button>
+                <Button
+                  variant={blockCategory === "action" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBlockCategory("action")}
+                  className={blockCategory === "action" ? "" : "bg-transparent"}
+                >
+                  Actions
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {displayedBlocks.map((blockType) => (
+                <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={blockConfigs[blockType]} />
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:hidden">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Strategy Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="strategy-name-mobile">Strategy Name</Label>
+                <Input
+                  id="strategy-name-mobile"
+                  value={strategyName}
+                  onChange={(e) => setStrategyName(e.target.value)}
+                  placeholder="Enter strategy name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Trading Pairs</Label>
+                {selectedPairs.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedPairs.map((pair) => (
+                      <div
+                        key={pair}
+                        className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
+                      >
+                        <span>{pair}</span>
+                        <button
+                          onClick={() => handleRemovePair(pair)}
+                          className="hover:bg-primary/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 w-full bg-transparent">
+                      <Plus className="h-4 w-4" />
+                      Add Trading Pair
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-2" align="start">
+                    <div className="flex flex-col gap-1 max-h-60 overflow-auto">
+                      {tradingPairs
+                        .filter((pair) => !selectedPairs.includes(pair))
+                        .map((pair) => (
+                          <button
+                            key={pair}
+                            onClick={() => handleAddPair(pair)}
+                            className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                          >
+                            {pair}
+                          </button>
+                        ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3 md:flex-row items-center justify-between">
+            <h2 className="text-xl font-semibold text-foreground">Strategy Rules</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleReset} className="gap-2 bg-transparent">
+                <RotateCcw className="h-4 w-4" />
+                Reset
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTemplatesDialogOpen(true)}
+                className="gap-2 bg-transparent"
+              >
+                <LayoutTemplate className="h-4 w-4" />
+                Templates
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportDialogOpen(true)}
+                className="gap-2 bg-transparent"
+              >
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePreview} className="gap-2 bg-transparent">
+                <Eye className="h-4 w-4" />
+                Preview
+              </Button>
+              <Button size="sm" onClick={handleDeploy} className="gap-2">
+                <Play className="h-4 w-4" />
+                Deploy
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-foreground">Rules</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addRuleGroup}
+                className="gap-2 border-primary text-primary hover:bg-primary/10 bg-transparent"
+              >
+                <Plus className="h-4 w-4" />
+                Add Rule
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {ruleGroups.map((group) => (
+                <RuleDropZone
+                  key={group.id}
+                  id={group.id}
+                  name={group.name}
+                  onNameChange={(newName) => handleRuleNameChange(group.id, newName)}
+                  conditionItems={group.conditionItems}
+                  actionItems={group.actionItems}
+                  onRemoveBlock={(itemId, category) => handleRemoveBlock(group.id, itemId, category)}
+                  onValueChange={(itemId, name, value, category) =>
+                    handleValueChange(group.id, itemId, name, value, category)
+                  }
+                  onDelete={() => removeRuleGroup(group.id)}
+                  canDelete={ruleGroups.length > 1}
+                  onMobileDropZoneClick={handleMobileDropZoneClick}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {previewJson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg bg-card p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Strategy JSON Preview</h3>
+              <Button variant="ghost" size="sm" onClick={() => setPreviewJson(null)}>
+                Close
+              </Button>
+            </div>
+            <pre className="overflow-auto rounded-lg bg-muted p-4 text-sm">
+              <code>{previewJson}</code>
+            </pre>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(previewJson)
+                  alert("Copied to clipboard!")
+                }}
+              >
+                Copy to Clipboard
+              </Button>
+              <Button size="sm" onClick={() => setPreviewJson(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Import Strategy</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setImportDialogOpen(false)
+                  setImportJson("")
+                  setImportError(null)
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Paste a valid strategy JSON to import it into the builder.
+            </p>
+            <Textarea
+              value={importJson}
+              onChange={(e) => setImportJson(e.target.value)}
+              placeholder='{"strategyId": "...", "strategyName": "...", "symbols": [...], "rules": [...]}'
+              className="min-h-[300px] font-mono text-sm"
+            />
+            {importError && <p className="mt-2 text-sm text-destructive">{importError}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setImportDialogOpen(false)
+                  setImportJson("")
+                  setImportError(null)
+                }}
+                className="bg-transparent"
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleImportStrategy}>
+                Import Strategy
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {templatesDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Strategy Templates</h3>
+              <Button variant="ghost" size="sm" onClick={() => setTemplatesDialogOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select a predefined strategy template to get started quickly.
+            </p>
+            {predefinedStrategies.length === 0 ? (
+              <div className="py-12 text-center">
+                <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No templates available yet.</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Check back later for predefined strategy templates.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-auto">
+                {predefinedStrategies.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => handleSelectTemplate(template)}
+                    className="w-full text-left p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <h4 className="font-medium text-foreground">{template.name}</h4>
+                    <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                    <div className="flex gap-2 mt-2">
+                      {template.strategy.symbols.slice(0, 3).map((symbol) => (
+                        <span key={symbol} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                          {symbol}
+                        </span>
+                      ))}
+                      {template.strategy.symbols.length > 3 && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                          +{template.strategy.symbols.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTemplatesDialogOpen(false)}
+                className="bg-transparent"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={mobileBlockPickerOpen} onOpenChange={setMobileBlockPickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add {mobileBlockPickerTarget?.category === "condition" ? "Condition" : "Action"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-auto">
+            {(mobileBlockPickerTarget?.category === "condition" ? conditionBlocks : actionBlocks).map((blockType) => {
+              const config = blockConfigs[blockType]
+              return (
+                <button
+                  key={blockType}
+                  onClick={() => handleMobileBlockSelect(blockType)}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors hover:opacity-80 ${config.bgColor} ${config.borderColor}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <config.icon className={`h-5 w-5 ${config.textColor}`} />
+                    <div>
+                      <p className={`font-medium ${config.textColor}`}>{config.label}</p>
+                      <p className="text-xs text-muted-foreground">{config.description}</p>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <DragOverlay>
+        {activeId && activeConfig && (
+          <div className={`flex items-center gap-3 p-3 rounded-lg border-2 ${activeConfig.bgColor} bg-card shadow-lg`}>
+            <div className={`flex h-8 w-8 items-center justify-center rounded-md ${activeConfig.color}`}>
+              <activeConfig.icon className="h-4 w-4" />
+            </div>
+            <span className="font-medium">{activeConfig.label}</span>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
+  )
+}
