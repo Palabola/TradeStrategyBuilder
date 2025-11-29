@@ -73,6 +73,65 @@ export class IndicatorsService {
     return emaValues.length > 0 ? emaValues[emaValues.length - 1] : null;
   }
 
+  /**
+   * Calculate Simple Moving Average (SMA/MA) for a given period
+   * @param candles - Array of candlesticks (must be sorted from oldest to newest)
+   * @param period - The MA period (e.g., 20 for MA-20, 50 for MA-50)
+   * @param priceKey - Which price to use for calculation (default: 'close')
+   * @returns Array of MA values (same length as input, with null for initial values)
+   */
+  calculateMA(
+    candles: Candle[],
+    period: number,
+    priceKey: "open" | "high" | "low" | "close" = "close",
+  ): (number | null)[] {
+    if (!candles || candles.length === 0) {
+      return []
+    }
+
+    if (period <= 0) {
+      throw new Error("Period must be greater than 0")
+    }
+
+    if (candles.length < period) {
+      throw new Error(`Not enough data points. Need at least ${period} candles for MA-${period}`)
+    }
+
+    const maValues: (number | null)[] = []
+
+    // Fill initial values with null (not enough data for MA yet)
+    for (let i = 0; i < period - 1; i++) {
+      maValues.push(null)
+    }
+
+    // Calculate MA using sliding window
+    for (let i = period - 1; i < candles.length; i++) {
+      let sum = 0
+      for (let j = i - period + 1; j <= i; j++) {
+        sum += candles[j][priceKey]
+      }
+      maValues.push(sum / period)
+    }
+
+    return maValues
+  }
+
+  /**
+   * Get the latest MA (Simple Moving Average) value for a given period
+   * @param candles - Array of candlesticks (must be sorted from oldest to newest)
+   * @param period - The MA period
+   * @param priceKey - Which price to use for calculation (default: 'close')
+   * @returns The latest MA value or null if not enough data
+   */
+  getLatestMA(
+    candles: Candle[],
+    period: number,
+    priceKey: 'open' | 'high' | 'low' | 'close' = 'close',
+  ): number | null {
+    const maValues = this.calculateMA(candles, period, priceKey);
+    return maValues.length > 0 ? maValues[maValues.length - 1] : null;
+  }
+
 
   /**
    * Calculate MACD (Moving Average Convergence Divergence)
@@ -281,6 +340,120 @@ export class IndicatorsService {
   ): number | null {
     const rsiValues = this.calculateRSI(candles, period, priceKey);
     return rsiValues.length > 0 ? rsiValues[rsiValues.length - 1] : null;
+  }
+
+   /**
+   * Calculate Bollinger Bands
+   * @param candles - Array of candlesticks (must be sorted from oldest to newest)
+   * @param period - The period for SMA calculation (default: 20)
+   * @param stdDev - Number of standard deviations for the bands (default: 2)
+   * @param priceKey - Which price to use for calculation (default: 'close')
+   * @returns Object containing upper band, middle band (SMA), and lower band arrays
+   *
+   * Bollinger Bands consist of:
+   * - Upper Band: SMA + (Standard Deviation × multiplier)
+   * - Middle Band: Simple Moving Average (SMA)
+   * - Lower Band: SMA - (Standard Deviation × multiplier)
+   *
+   * Interpretation:
+   * - Price touching upper band: Potential overbought condition
+   * - Price touching lower band: Potential oversold condition
+   * - Bands narrowing: Low volatility, potential breakout
+   * - Bands widening: High volatility
+   * - Price above middle band: Bullish momentum
+   * - Price below middle band: Bearish momentum
+   */
+  calculateBollingerBands(
+    candles: Candle[],
+    period: number = 20,
+    stdDev: number = 2,
+    priceKey: 'open' | 'high' | 'low' | 'close' = 'close',
+  ): {
+    upperBand: (number | null)[];
+    middleBand: (number | null)[];
+    lowerBand: (number | null)[];
+  } {
+    if (!candles || candles.length === 0) {
+      return { upperBand: [], middleBand: [], lowerBand: [] };
+    }
+
+    if (period <= 0) {
+      throw new Error('Period must be greater than 0');
+    }
+
+    if (candles.length < period) {
+      throw new Error(`Not enough data points. Need at least ${period} candles for Bollinger Bands-${period}`);
+    }
+
+    const upperBand: (number | null)[] = [];
+    const middleBand: (number | null)[] = [];
+    const lowerBand: (number | null)[] = [];
+
+    // Calculate for each position
+    for (let i = 0; i < candles.length; i++) {
+      if (i < period - 1) {
+        upperBand.push(null);
+        middleBand.push(null);
+        lowerBand.push(null);
+        continue;
+      }
+
+      // Calculate SMA (Simple Moving Average) for the period
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) {
+        sum += candles[j][priceKey];
+      }
+      const sma = sum / period;
+
+      // Calculate standard deviation
+      let variance = 0;
+      for (let j = i - period + 1; j <= i; j++) {
+        const diff = candles[j][priceKey] - sma;
+        variance += diff * diff;
+      }
+      const standardDeviation = Math.sqrt(variance / period);
+
+      // Calculate bands
+      const upper = sma + stdDev * standardDeviation;
+      const lower = sma - stdDev * standardDeviation;
+
+      upperBand.push(upper);
+      middleBand.push(sma);
+      lowerBand.push(lower);
+    }
+
+    return {
+      upperBand,
+      middleBand,
+      lowerBand,
+    };
+  }
+  
+  /**
+   * Get the latest Bollinger Bands values
+   * @param candles - Array of candlesticks (must be sorted from oldest to newest)
+   * @param period - The period for calculation (default: 20)
+   * @param stdDev - Number of standard deviations (default: 2)
+   * @param priceKey - Which price to use for calculation (default: 'close')
+   * @returns Object containing latest upper, middle, and lower band values
+   */
+  getLatestBollingerBands(
+    candles: Candle[],
+    period: number = 20,
+    stdDev: number = 2,
+    priceKey: 'open' | 'high' | 'low' | 'close' = 'close',
+  ): {
+    upperBand: number | null;
+    middleBand: number | null;
+    lowerBand: number | null;
+  } {
+    const result = this.calculateBollingerBands(candles, period, stdDev, priceKey);
+
+    return {
+      upperBand: result.upperBand.length > 0 ? result.upperBand[result.upperBand.length - 1] : null,
+      middleBand: result.middleBand.length > 0 ? result.middleBand[result.middleBand.length - 1] : null,
+      lowerBand: result.lowerBand.length > 0 ? result.lowerBand[result.lowerBand.length - 1] : null,
+    };
   }
 }
 

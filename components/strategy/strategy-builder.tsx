@@ -23,6 +23,10 @@ import {
   conditionBlocks,
   actionBlocks,
   tradingPairs,
+  candleOptions as defaultCandleOptions,
+  indicatorOptions as defaultIndicatorOptions,
+  unitOptions as defaultUnitOptions,
+  channelOptions as defaultChannelOptions,
   type BlockConfig,
   type BlockType,
   type BlockCategory,
@@ -54,18 +58,67 @@ interface StrategyJsonResult {
 
 interface StrategyBuilderProps {
   strategyId?: string
+  candleOptions?: string[]
+  indicatorOptions?: string[]
+  unitOptions?: string[]
+  channelOptions?: string[]
 }
 
-function parseStrategyToRuleGroups(parsed: {
-  strategyName: string
-  symbols: string[]
-  rules: any[]
-}): { ruleGroups: RuleGroup[]; strategyName: string; symbols: string[] } {
+/**
+ * Creates a modified blockConfigs object with custom options
+ */
+function createCustomBlockConfigs(
+  candleOpts: string[],
+  indicatorOpts: string[],
+  unitOpts: string[],
+  channelOpts: string[]
+): Record<BlockType, BlockConfig> {
+  const customConfigs: Record<BlockType, BlockConfig> = {} as Record<BlockType, BlockConfig>
+
+  // Deep clone each block config while preserving the icon reference
+  for (const blockType of Object.keys(blockConfigs) as BlockType[]) {
+    const original = blockConfigs[blockType]
+    customConfigs[blockType] = {
+      ...original,
+      icon: original.icon, // Preserve the icon component reference
+      parameters: original.parameters.map((param) => {
+        // Update candle options
+        if (param.name === "candles" || param.name === "candles1" || param.name === "candles2") {
+          return { ...param, options: candleOpts }
+        }
+        // Update indicator options
+        if (param.name === "indicator" || param.name === "indicator1" || param.name === "indicator2") {
+          return { ...param, options: indicatorOpts }
+        }
+        // Update unit options
+        if (param.name === "unit") {
+          return { ...param, options: unitOpts }
+        }
+        // Update channel options
+        if (param.name === "channel") {
+          return { ...param, options: channelOpts }
+        }
+        return { ...param }
+      }),
+    }
+  }
+
+  return customConfigs
+}
+
+function parseStrategyToRuleGroups(
+  parsed: {
+    strategyName: string
+    symbols: string[]
+    rules: any[]
+  },
+  configs: Record<BlockType, BlockConfig>
+): { ruleGroups: RuleGroup[]; strategyName: string; symbols: string[] } {
   const newRuleGroups: RuleGroup[] = parsed.rules.map((rule: any, ruleIndex: number) => {
     const conditionItems: CanvasItem[] = (rule.conditions || [])
       .map((condition: any) => {
         const blockType = condition.type as BlockType
-        const config = blockConfigs[blockType]
+        const config = configs[blockType]
 
         if (!config) {
           console.warn(`Unknown block type: ${blockType}`)
@@ -111,7 +164,7 @@ function parseStrategyToRuleGroups(parsed: {
           return null
         }
 
-        const config = blockConfigs[blockType]
+        const config = configs[blockType]
         if (!config) return null
 
         const values: Record<string, string | number> = {}
@@ -151,7 +204,21 @@ function parseStrategyToRuleGroups(parsed: {
   }
 }
 
-export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
+export function StrategyBuilder({
+  strategyId,
+  candleOptions = defaultCandleOptions,
+  indicatorOptions = defaultIndicatorOptions,
+  unitOptions = defaultUnitOptions,
+  channelOptions = defaultChannelOptions,
+}: StrategyBuilderProps) {
+  // Create custom block configs with the provided options
+  const customBlockConfigs = createCustomBlockConfigs(
+    candleOptions,
+    indicatorOptions,
+    unitOptions,
+    channelOptions
+  )
+
   const [strategyName, setStrategyName] = useState("New Strategy")
   const [selectedPairs, setSelectedPairs] = useState<string[]>(["BTC/USD"])
   const [ruleGroups, setRuleGroups] = useState<RuleGroup[]>([
@@ -179,12 +246,12 @@ export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
       symbols: string[]
       rules: any[]
     }) => {
-      const { ruleGroups: newRuleGroups, strategyName: name, symbols } = parseStrategyToRuleGroups(parsed)
+      const { ruleGroups: newRuleGroups, strategyName: name, symbols } = parseStrategyToRuleGroups(parsed, customBlockConfigs)
       setStrategyName(name)
       setSelectedPairs(symbols)
       setRuleGroups(newRuleGroups)
     },
-    [],
+    [customBlockConfigs],
   )
 
   useEffect(() => {
@@ -228,7 +295,7 @@ export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
 
     if (String(active.id).startsWith("sidebar-")) {
       const blockType = active.data.current?.type as BlockType
-      const config = blockConfigs[blockType]
+      const config = customBlockConfigs[blockType]
 
       // Check if dropping to conditions or actions
       const isConditionsZone = overId.endsWith("-conditions")
@@ -566,7 +633,7 @@ export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
   const handleMobileBlockSelect = (blockType: BlockType) => {
     if (!mobileBlockPickerTarget) return
 
-    const config = blockConfigs[blockType]
+    const config = customBlockConfigs[blockType]
     const newItem = {
       id: `canvas-${Date.now()}`,
       config,
@@ -688,7 +755,7 @@ export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               {displayedBlocks.map((blockType) => (
-                <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={blockConfigs[blockType]} />
+                <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={customBlockConfigs[blockType]} />
               ))}
             </CardContent>
           </Card>
@@ -976,7 +1043,7 @@ export function StrategyBuilder({ strategyId }: StrategyBuilderProps) {
           </DialogHeader>
           <div className="space-y-2 max-h-[60vh] overflow-auto">
             {(mobileBlockPickerTarget?.category === "condition" ? conditionBlocks : actionBlocks).map((blockType) => {
-              const config = blockConfigs[blockType]
+              const config = customBlockConfigs[blockType]
               return (
                 <button
                   key={blockType}

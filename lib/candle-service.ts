@@ -9,9 +9,7 @@ export const timeframeToInterval: Record<string, KrakenInterval> = {
   "30min": 30,
   "1h": 60,
   "4h": 240,
-  "6h": 1440, // Kraken doesn't have 6h, using 1d as closest
   "24h": 1440,
-  "1d": 1440,
   "1w": 10080,
 }
 

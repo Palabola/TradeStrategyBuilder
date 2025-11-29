@@ -1,16 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { getSavedStrategies, type SavedStrategy } from "@/lib/strategy-storage"
-import { Play, Check, X } from "lucide-react"
+import { candleService, timeframeToInterval, type Candle } from "@/lib/candle-service"
+import { strategyRunner, type StrategyEvaluation, type ConditionEvaluation } from "@/lib/strategy-runner"
+import { OHLCChart } from "./ohlc-chart"
+import { Play, Check, X, Loader2 } from "lucide-react"
 
 interface ConditionStatus {
   [ruleIndex: number]: {
     [conditionIndex: number]: boolean
+  }
+}
+
+interface ConditionDetails {
+  [ruleIndex: number]: {
+    [conditionIndex: number]: ConditionEvaluation
   }
 }
 
@@ -20,27 +29,77 @@ export function StrategyRunner() {
   const [loadedStrategy, setLoadedStrategy] = useState<SavedStrategy | null>(null)
   const [conditionStatuses, setConditionStatuses] = useState<ConditionStatus>({})
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [candleData, setCandleData] = useState<Candle[]>([])
+  const [isLoadingCandles, setIsLoadingCandles] = useState(false)
+  const [candleError, setCandleError] = useState<string | null>(null)
+  const [isRunningTest, setIsRunningTest] = useState(false)
+  const [conditionDetails, setConditionDetails] = useState<ConditionDetails>({})
 
   const savedStrategies = getSavedStrategies()
+
+  // Fetch candle data when symbol or timeframe changes
+  useEffect(() => {
+    const fetchCandles = async () => {
+      setIsLoadingCandles(true)
+      setCandleError(null)
+      
+      try {
+        // Convert symbol format from "BTC/USD" to "BTCUSD" for Kraken API
+        const krakenSymbol = selectedSymbol.replace("/", "")
+        const candles = await candleService.fetchCandles(krakenSymbol, selectedTimeframe)
+        setCandleData(candles)
+      } catch (error) {
+        console.error("Error fetching candles:", error)
+        setCandleError(error instanceof Error ? error.message : "Failed to fetch candle data")
+      } finally {
+        setIsLoadingCandles(false)
+      }
+    }
+
+    fetchCandles()
+  }, [selectedSymbol, selectedTimeframe])
 
   const handleLoadStrategy = (strategy: SavedStrategy) => {
     setLoadedStrategy(strategy)
     setConditionStatuses({})
+    setConditionDetails({})
     setIsDialogOpen(false)
   }
 
-  const handleRunTest = () => {
+  const handleRunTest = async () => {
     if (!loadedStrategy) return
 
-    // Generate random true/false for each condition
-    const newStatuses: ConditionStatus = {}
-    loadedStrategy.rules.forEach((rule, ruleIndex) => {
-      newStatuses[ruleIndex] = {}
-      rule.conditions.forEach((_, conditionIndex) => {
-        newStatuses[ruleIndex][conditionIndex] = Math.random() > 0.5
+    setIsRunningTest(true)
+    setConditionStatuses({})
+    setConditionDetails({})
+
+    try {
+      // Convert symbol format from "BTC/USD" to "BTCUSD" for Kraken API
+      const krakenSymbol = selectedSymbol.replace("/", "")
+      
+      // Evaluate the strategy using the strategy runner
+      const evaluation = await strategyRunner.evaluateStrategy(loadedStrategy, krakenSymbol)
+      
+      // Convert evaluation results to condition statuses and details format
+      const newStatuses: ConditionStatus = {}
+      const newDetails: ConditionDetails = {}
+      
+      evaluation.rules.forEach((ruleEval, ruleIndex) => {
+        newStatuses[ruleIndex] = {}
+        newDetails[ruleIndex] = {}
+        ruleEval.conditions.forEach((conditionEval, conditionIndex) => {
+          newStatuses[ruleIndex][conditionIndex] = conditionEval.result
+          newDetails[ruleIndex][conditionIndex] = conditionEval
+        })
       })
-    })
-    setConditionStatuses(newStatuses)
+      
+      setConditionStatuses(newStatuses)
+      setConditionDetails(newDetails)
+    } catch (error) {
+      console.error("Error running strategy test:", error)
+    } finally {
+      setIsRunningTest(false)
+    }
   }
 
   const getRuleSummary = (ruleIndex: number) => {
@@ -118,25 +177,37 @@ export function StrategyRunner() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5min">5min</SelectItem>
-                    <SelectItem value="15min">15min</SelectItem>
-                    <SelectItem value="1h">1h</SelectItem>
-                    <SelectItem value="4h">4h</SelectItem>
-                    <SelectItem value="6h">6h</SelectItem>
-                    <SelectItem value="24h">24h</SelectItem>
+                    {Object.keys(timeframeToInterval).map((timeframe) => (
+                      <SelectItem key={timeframe} value={timeframe}>
+                        {timeframe}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="h-[400px] bg-muted/20 rounded-lg flex items-center justify-center border border-border">
-              <p className="text-muted-foreground">OHLC Chart placeholder - Integration coming soon</p>
-            </div>
+            {candleError ? (
+              <div className="h-[400px] bg-muted/20 rounded-lg flex items-center justify-center border border-border">
+                <p className="text-destructive">{candleError}</p>
+              </div>
+            ) : (
+              <OHLCChart data={candleData} isLoading={isLoadingCandles} />
+            )}
             {loadedStrategy && (
-              <Button onClick={handleRunTest} className="w-full gap-2">
-                <Play className="h-4 w-4" />
-                Run Test
+              <Button onClick={handleRunTest} disabled={isRunningTest} className="w-full gap-2">
+                {isRunningTest ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Evaluating...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Run Test
+                  </>
+                )}
               </Button>
             )}
           </CardContent>
@@ -222,21 +293,53 @@ export function StrategyRunner() {
                       <CardContent className="space-y-2">
                         {rule.conditions.map((condition, conditionIndex) => {
                           const status = conditionStatuses[ruleIndex]?.[conditionIndex]
+                          const details = conditionDetails[ruleIndex]?.[conditionIndex]
                           const hasStatus = status !== undefined
 
                           return (
                             <div
                               key={conditionIndex}
-                              className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                              className="p-3 bg-muted/30 rounded-lg space-y-2"
                             >
-                              <span className="text-sm">{getConditionLabel(condition)}</span>
-                              {hasStatus && (
-                                <div
-                                  className={`flex items-center justify-center h-6 w-6 rounded-full ${
-                                    status ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
-                                  }`}
-                                >
-                                  {status ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">{getConditionLabel(condition)}</span>
+                                {hasStatus && (
+                                  <div
+                                    className={`flex items-center justify-center h-6 w-6 rounded-full ${
+                                      status ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
+                                    }`}
+                                  >
+                                    {status ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                                  </div>
+                                )}
+                              </div>
+                              {details && (
+                                <div className="text-xs text-muted-foreground border-t border-border/50 pt-2 mt-2 space-y-1">
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                    {details.currentValue !== null && details.currentValue !== undefined && (
+                                      <span>
+                                        <span className="text-foreground/70">Current:</span>{" "}
+                                        <span className="font-mono">{details.currentValue.toFixed(2)}</span>
+                                      </span>
+                                    )}
+                                    {details.previousValue !== null && details.previousValue !== undefined && (
+                                      <span>
+                                        <span className="text-foreground/70">Previous:</span>{" "}
+                                        <span className="font-mono">{details.previousValue.toFixed(2)}</span>
+                                      </span>
+                                    )}
+                                    {details.comparisonValue !== null && details.comparisonValue !== undefined && (
+                                      <span>
+                                        <span className="text-foreground/70">Comparison:</span>{" "}
+                                        <span className="font-mono">{details.comparisonValue.toFixed(2)}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  {details.error && (
+                                    <div className="text-destructive">
+                                      <span className="font-medium">Error:</span> {details.error}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

@@ -45,9 +45,13 @@ export interface Parameter {
   default?: string | number
 }
 
-export const candleOptions = ["5min", "15min", "1h", "4h", "6h", "24h"]
+export const candleOptions = ["1min", "5min", "15min", "30min", "1h", "4h", "24h", "1w"]
 
-export const indicatorOptions = ["Price", "RSI", "MACD", "Moving Average", "Volume", "Bollinger Bands"]
+export const indicatorOptions = ["Price", "RSI", "MACD", "MA", "EMA(20)", "EMA(50)", "Bollinger Bands"]
+
+export const unitOptions = ["USD", "%"]
+
+export const channelOptions = ["Telegram", "Notification", "Email"]
 
 export const blockConfigs: Record<BlockType, BlockConfig> = {
   "increased-by": {
@@ -290,7 +294,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "unit",
         type: "select",
         label: "Unit",
-        options: ["USD", "%"],
+        options: unitOptions,
         default: "USD",
       },
     ],
@@ -315,7 +319,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "unit",
         type: "select",
         label: "Unit",
-        options: ["USD", "%"],
+        options: unitOptions,
         default: "%",
       },
     ],
@@ -333,7 +337,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "channel",
         type: "select",
         label: "Channel",
-        options: ["Telegram", "Notification", "Email"],
+        options: channelOptions,
         default: "Notification",
       },
       {
