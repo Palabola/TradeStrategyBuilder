@@ -45,6 +45,42 @@ export interface Parameter {
   default?: string | number
 }
 
+export interface PredefinedStrategyTemplate {
+  id: string
+  name: string
+  description: string
+  strategy: StrategyTemplate
+}
+
+export interface StrategyTemplate {
+  strategyId?: string
+  strategyName: string
+  symbols: string[]
+  rules: {
+    name: string
+    conditions: {
+      index: number
+      type: ConditionBlockType
+      indicator1?: string
+      timeframe1?: string
+      indicator2?: string
+      timeframe2?: string
+      value?: number
+    }[]
+    actions: {
+      index: number
+      action: "BUY" | "SELL" | "NOTIFY"
+      options: {
+        amount?: number
+        unit?: string
+        channel?: string
+        message?: string
+      }
+    }[]
+  }[]
+}
+
+
 export const candleOptions = ["1min", "5min", "15min", "30min", "1h", "4h", "24h", "1w"]
 
 export const indicatorOptions = ["Price", "RSI", "MACD", "MA", "EMA(20)", "EMA(50)", "Bollinger Bands"]

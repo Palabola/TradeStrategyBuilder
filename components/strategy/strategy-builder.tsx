@@ -30,10 +30,12 @@ import {
   type BlockConfig,
   type BlockType,
   type BlockCategory,
+  StrategyTemplate,
+  PredefinedStrategyTemplate,
 } from "./block-types"
 import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { predefinedStrategies, type StrategyTemplate } from "@/lib/predefined-strategies"
+import { predefinedStrategies } from "@/lib/predefined-strategies"
 import { getStrategyById, saveStrategyToStorage } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
@@ -241,11 +243,7 @@ export function StrategyBuilder({
   const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(strategyId || null)
 
   const loadStrategyFromJson = useCallback(
-    (parsed: {
-      strategyName: string
-      symbols: string[]
-      rules: any[]
-    }) => {
+    (parsed: StrategyTemplate) => {
       const { ruleGroups: newRuleGroups, strategyName: name, symbols } = parseStrategyToRuleGroups(parsed, customBlockConfigs)
       setStrategyName(name)
       setSelectedPairs(symbols)
@@ -605,7 +603,7 @@ export function StrategyBuilder({
     }
   }
 
-  const handleSelectTemplate = (template: StrategyTemplate) => {
+  const handleSelectTemplate = (template: PredefinedStrategyTemplate) => {
     loadStrategyFromJson(template.strategy)
     setTemplatesDialogOpen(false)
   }
@@ -639,7 +637,7 @@ export function StrategyBuilder({
       config,
       values: config.parameters.reduce(
         (acc, param) => {
-          acc[param.name] = param.defaultValue || ""
+          acc[param.name] = param.default || ""
           return acc
         },
         {} as Record<string, string | number>,
@@ -1048,12 +1046,12 @@ export function StrategyBuilder({
                 <button
                   key={blockType}
                   onClick={() => handleMobileBlockSelect(blockType)}
-                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors hover:opacity-80 ${config.bgColor} ${config.borderColor}`}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors hover:opacity-80 ${config.bgColor}`}
                 >
                   <div className="flex items-center gap-3">
-                    <config.icon className={`h-5 w-5 ${config.textColor}`} />
+                    <config.icon className={`h-5 w-5 ${config.color}`} />
                     <div>
-                      <p className={`font-medium ${config.textColor}`}>{config.label}</p>
+                      <p className={`font-medium ${config.color}`}>{config.label}</p>
                       <p className="text-xs text-muted-foreground">{config.description}</p>
                     </div>
                   </div>
