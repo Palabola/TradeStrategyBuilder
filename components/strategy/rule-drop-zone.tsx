@@ -146,13 +146,15 @@ export function RuleDropZone({
               <h4 className="text-sm font-medium text-muted-foreground mb-2">Conditions</h4>
               <div
                 ref={setConditionsRef}
-                onClick={() => onMobileDropZoneClick?.(id, "condition")}
-                className={`min-h-[100px] p-3 rounded-lg border-2 border-dashed transition-colors relative lg:cursor-default cursor-pointer ${
+                className={`min-h-[100px] p-3 rounded-lg border-2 border-dashed transition-colors relative ${
                   isOverConditions ? "border-primary bg-primary/5" : "border-border bg-muted/10"
                 }`}
               >
                 {conditionItems.length === 0 ? (
-                  <div className="flex h-[80px] items-center justify-center">
+                  <div 
+                    onClick={() => onMobileDropZoneClick?.(id, "condition")}
+                    className="flex h-[80px] items-center justify-center cursor-pointer lg:cursor-default"
+                  >
                     <div className="text-center">
                       <Plus className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground hidden lg:block">Drop conditions here</p>
@@ -161,7 +163,6 @@ export function RuleDropZone({
                   </div>
                 ) : (
                   <>
-                    <div className="absolute inset-0 z-0" />
                     <SortableContext items={conditionItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                       <div className="space-y-3 relative z-10">
                         {conditionItems.map((item) => (
@@ -177,7 +178,11 @@ export function RuleDropZone({
                       </div>
                     </SortableContext>
                     <div
-                      className={`mt-3 h-12 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors ${
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onMobileDropZoneClick?.(id, "condition")
+                      }}
+                      className={`mt-3 h-12 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer lg:cursor-default ${
                         isOverConditions ? "border-primary bg-primary/10" : "border-muted-foreground/30"
                       }`}
                     >
@@ -196,13 +201,15 @@ export function RuleDropZone({
               <h4 className="text-sm font-medium text-muted-foreground mb-2">Actions</h4>
               <div
                 ref={setActionsRef}
-                onClick={() => onMobileDropZoneClick?.(id, "action")}
-                className={`min-h-[100px] p-3 rounded-lg border-2 border-dashed transition-colors relative lg:cursor-default cursor-pointer ${
+                className={`min-h-[100px] p-3 rounded-lg border-2 border-dashed transition-colors relative ${
                   isOverActions ? "border-success bg-success/5" : "border-border bg-muted/10"
                 }`}
               >
                 {actionItems.length === 0 ? (
-                  <div className="flex h-[80px] items-center justify-center">
+                  <div 
+                    onClick={() => onMobileDropZoneClick?.(id, "action")}
+                    className="flex h-[80px] items-center justify-center cursor-pointer lg:cursor-default"
+                  >
                     <div className="text-center">
                       <Plus className="mx-auto mb-1 h-6 w-6 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground hidden lg:block">Drop actions here</p>
@@ -211,7 +218,6 @@ export function RuleDropZone({
                   </div>
                 ) : (
                   <>
-                    <div className="absolute inset-0 z-0" />
                     <SortableContext items={actionItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
                       <div className="space-y-3 relative z-10">
                         {actionItems.map((item) => (
@@ -227,7 +233,11 @@ export function RuleDropZone({
                       </div>
                     </SortableContext>
                     <div
-                      className={`mt-3 h-12 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors ${
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onMobileDropZoneClick?.(id, "action")
+                      }}
+                      className={`mt-3 h-12 rounded-lg border-2 border-dashed flex items-center justify-center transition-colors cursor-pointer lg:cursor-default ${
                         isOverActions ? "border-success bg-success/10" : "border-muted-foreground/30"
                       }`}
                     >

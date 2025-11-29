@@ -370,7 +370,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
     config.type === "open-position" || config.type === "close-position" || config.type === "notify-me"
 
   return (
-    <div ref={setNodeRef} style={style} className={`relative rounded-lg border-2 ${config.bgColor} bg-card shadow-sm`}>
+    <div ref={setNodeRef} style={style} onClick={(e) => e.stopPropagation()} className={`relative rounded-lg border-2 ${config.bgColor} bg-card shadow-sm`}>
       <div className={`flex items-center justify-between p-3 border-b border-border rounded-t-md ${config.bgColor}`}>
         <div className="flex items-center gap-3">
           <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
