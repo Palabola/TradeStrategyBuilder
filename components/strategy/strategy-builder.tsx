@@ -30,6 +30,7 @@ import {
   type BlockConfig,
   type BlockType,
   type BlockCategory,
+  type IndicatorOption,
   StrategyTemplate,
   PredefinedStrategyTemplate,
 } from "./block-types"
@@ -61,7 +62,7 @@ interface StrategyJsonResult {
 interface StrategyBuilderProps {
   strategyId?: string
   candleOptions?: string[]
-  indicatorOptions?: string[]
+  indicatorOptions?: IndicatorOption[]
   unitOptions?: string[]
   channelOptions?: string[]
 }
@@ -71,7 +72,7 @@ interface StrategyBuilderProps {
  */
 function createCustomBlockConfigs(
   candleOpts: string[],
-  indicatorOpts: string[],
+  indicatorOpts: IndicatorOption[],
   unitOpts: string[],
   channelOpts: string[]
 ): Record<BlockType, BlockConfig> {
@@ -90,7 +91,7 @@ function createCustomBlockConfigs(
         }
         // Update indicator options
         if (param.name === "indicator" || param.name === "indicator1" || param.name === "indicator2") {
-          return { ...param, options: indicatorOpts }
+          return { ...param, indicatorOptions: indicatorOpts }
         }
         // Update unit options
         if (param.name === "unit") {

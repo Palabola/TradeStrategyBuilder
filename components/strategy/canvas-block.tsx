@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { BlockConfig, Parameter } from "./block-types"
+import type { BlockConfig, Parameter, IndicatorOption } from "./block-types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { GripVertical, X, ChevronDown, ChevronUp } from "lucide-react"
 
@@ -146,8 +146,62 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
 
   const Icon = config.icon
 
+  // Helper to get category label for display
+  const getCategoryLabel = (category: string): string => {
+    switch (category) {
+      case "price": return "Price-based"
+      case "oscillator": return "Oscillators"
+      case "volume": return "Volume"
+      case "volatility": return "Volatility"
+      default: return category
+    }
+  }
+
+  // Helper to group indicator options by category
+  const groupIndicatorsByCategory = (indicators: IndicatorOption[]) => {
+    return indicators.reduce((acc, ind) => {
+      if (!acc[ind.category]) {
+        acc[ind.category] = []
+      }
+      acc[ind.category].push(ind)
+      return acc
+    }, {} as Record<string, IndicatorOption[]>)
+  }
+
+  // Render indicator select with category grouping
+  const renderIndicatorSelect = (param: Parameter, filteredOptions?: IndicatorOption[]) => {
+    const value = values[param.name] ?? param.default ?? ""
+    const indicators = filteredOptions ?? param.indicatorOptions ?? []
+    const grouped = groupIndicatorsByCategory(indicators)
+
+    return (
+      <Select value={String(value)} onValueChange={(v) => onValueChange(param.name, v)}>
+        <SelectTrigger>
+          <SelectValue placeholder={`Select ${param.label}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(grouped).map(([category, options]) => (
+            <SelectGroup key={category}>
+              <SelectLabel>{getCategoryLabel(category)}</SelectLabel>
+              {options.map((ind) => (
+                <SelectItem key={ind.name} value={ind.name}>
+                  {ind.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+    )
+  }
+
   const renderParameter = (param: Parameter) => {
     const value = values[param.name] ?? param.default ?? ""
+
+    // Handle indicator parameters specially
+    if (param.indicatorOptions && param.indicatorOptions.length > 0) {
+      return renderIndicatorSelect(param)
+    }
 
     switch (param.type) {
       case "select":
@@ -232,6 +286,16 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
 
       const conditionLabel = config.type === "greater-than" ? "Greater Than" : "Lower Than"
 
+      // Get selected indicator1 value and find its category
+      const indicator1Value = values.indicator1 ?? indicator1Param?.default ?? ""
+      const indicator1Option = indicator1Param?.indicatorOptions?.find((ind) => ind.name === indicator1Value)
+      const indicator1Category = indicator1Option?.category
+
+      // Filter indicator2 options to match the same category as indicator1
+      const filteredIndicator2Options = indicator1Category && indicator2Param?.indicatorOptions
+        ? indicator2Param.indicatorOptions.filter((ind) => ind.category === indicator1Category)
+        : indicator2Param?.indicatorOptions
+
       return (
         <div className="space-y-4">
           <div className="flex items-end gap-3">
@@ -250,7 +314,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
           <div className="flex items-end gap-3">
             <div className="space-y-2">
               <Label>Target Indicator</Label>
-              {indicator2Param && renderParameter(indicator2Param)}
+              {indicator2Param && renderIndicatorSelect(indicator2Param, filteredIndicator2Options)}
             </div>
             <div className="space-y-2">
               <Label>Candles</Label>
@@ -332,6 +396,16 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
 
     const crossingLabel = config.type === "crossing-above" ? "Crossing Above" : "Crossing Below"
 
+    // Get selected indicator1 value and find its category
+    const indicator1Value = values.indicator1 ?? indicator1Param?.default ?? ""
+    const indicator1Option = indicator1Param?.indicatorOptions?.find((ind) => ind.name === indicator1Value)
+    const indicator1Category = indicator1Option?.category
+
+    // Filter indicator2 options to match the same category as indicator1
+    const filteredIndicator2Options = indicator1Category && indicator2Param?.indicatorOptions
+      ? indicator2Param.indicatorOptions.filter((ind) => ind.category === indicator1Category)
+      : indicator2Param?.indicatorOptions
+
     return (
       <div className="space-y-4">
         {/* First indicator row */}
@@ -352,7 +426,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
         <div className="flex items-end gap-3">
           <div className="space-y-2">
             <Label>Target Indicator</Label>
-            {indicator2Param && renderParameter(indicator2Param)}
+            {indicator2Param && renderIndicatorSelect(indicator2Param, filteredIndicator2Options)}
           </div>
           <div className="space-y-2">
             <Label>Candles</Label>

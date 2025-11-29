@@ -36,11 +36,17 @@ export interface BlockConfig {
   parameters: Parameter[]
 }
 
+export interface IndicatorOption {
+  name: string
+  category: string;
+}
+
 export interface Parameter {
   name: string
   type: "select" | "number" | "text" | "textarea"
   label: string
   options?: string[]
+  indicatorOptions?: IndicatorOption[]
   placeholder?: string
   default?: string | number
 }
@@ -83,7 +89,15 @@ export interface StrategyTemplate {
 
 export const candleOptions = ["1min", "5min", "15min", "30min", "1h", "4h", "24h", "1w"]
 
-export const indicatorOptions = ["Price", "RSI", "MACD", "MA", "EMA(20)", "EMA(50)", "Bollinger Bands"]
+export const indicatorOptions: IndicatorOption[] = [
+  { name: "Price", category: "price" },
+  { name: "MA", category: "price" },
+  { name: "EMA(20)", category: "price" },
+  { name: "EMA(50)", category: "price" },
+  { name: "Bollinger Bands", category: "price" },
+  { name: "RSI", category: "oscillator" },
+  { name: "MACD", category: "oscillator" },
+]
 
 export const unitOptions = ["USD", "%"]
 
@@ -103,7 +117,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator",
         type: "select",
         label: "Indicator",
-        options: indicatorOptions,
+        indicatorOptions: indicatorOptions,
         default: "Price",
       },
       {
@@ -135,7 +149,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator",
         type: "select",
         label: "Indicator",
-        options: indicatorOptions,
+        indicatorOptions: indicatorOptions,
         default: "Price",
       },
       {
@@ -167,7 +181,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator1",
         type: "select",
         label: "Indicator",
-        options: indicatorOptions,
+        indicatorOptions: indicatorOptions,
         default: "RSI",
       },
       {
@@ -181,8 +195,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator2",
         type: "select",
         label: "Target Indicator",
-        options: indicatorOptions,
-        default: "Moving Average",
+        indicatorOptions: indicatorOptions,
+        default: "MA",
       },
       {
         name: "candles2",
@@ -206,7 +220,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator1",
         type: "select",
         label: "Indicator",
-        options: indicatorOptions,
+        indicatorOptions: indicatorOptions,
         default: "RSI",
       },
       {
@@ -220,8 +234,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator2",
         type: "select",
         label: "Target Indicator",
-        options: indicatorOptions,
-        default: "Moving Average",
+        indicatorOptions: indicatorOptions,
+        default: "MA",
       },
       {
         name: "candles2",
@@ -245,7 +259,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator1",
         type: "select",
         label: "Indicator",
-        options: indicatorOptions,
+        indicatorOptions: indicatorOptions,
         default: "Price",
       },
       {
@@ -259,8 +273,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator2",
         type: "select",
         label: "Target Indicator",
-        options: indicatorOptions,
-        default: "Moving Average",
+        indicatorOptions: indicatorOptions,
+        default: "MA",
       },
       {
         name: "candles2",
@@ -284,7 +298,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator1",
         type: "select",
         label: "Indicator",
-        options: indicatorOptions,
+        indicatorOptions: indicatorOptions,
         default: "Price",
       },
       {
@@ -298,8 +312,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         name: "indicator2",
         type: "select",
         label: "Target Indicator",
-        options: indicatorOptions,
-        default: "Moving Average",
+        indicatorOptions: indicatorOptions,
+        default: "MA",
       },
       {
         name: "candles2",
