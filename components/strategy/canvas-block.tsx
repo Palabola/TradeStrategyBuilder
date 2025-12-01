@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useMemo } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { BlockConfig, Parameter, IndicatorOption } from "./block-types"
+import type { BlockConfig, Parameter, IndicatorOption, CustomTheme } from "./block-types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +19,7 @@ interface CanvasBlockProps {
   values: Record<string, string | number>
   onRemove: () => void
   onValueChange: (name: string, value: string | number) => void
+  themeOverride?: CustomTheme
 }
 
 function generateDynamicTitle(config: BlockConfig, values: Record<string, string | number>): React.ReactNode {
@@ -35,6 +36,12 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
   const unit = values.unit ?? config.parameters.find((p) => p.name === "unit")?.default ?? ""
   const message = values.message ?? config.parameters.find((p) => p.name === "message")?.default ?? ""
   const channel = values.channel ?? config.parameters.find((p) => p.name === "channel")?.default ?? ""
+
+  // Position fields
+  const side = values.side ?? config.parameters.find((p) => p.name === "side")?.default ?? ""
+  const leverage = values.leverage ?? config.parameters.find((p) => p.name === "leverage")?.default ?? ""
+  const stopLoss = values.stopLoss ?? config.parameters.find((p) => p.name === "stopLoss")?.default ?? 0
+  const takeProfit = values.takeProfit ?? config.parameters.find((p) => p.name === "takeProfit")?.default ?? 0
 
   switch (config.type) {
     case "increased-by":
@@ -106,16 +113,40 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
     case "open-position":
       return (
         <>
-          <span className="font-bold">Open Position</span>{" "}
+          <span className="font-bold">Open {side}</span>{" "}
           <span className="italic text-muted-foreground">
             {amount} {unit}
           </span>
+          {leverage && leverage !== "No" && (
+            <span className="italic text-muted-foreground"> @ {leverage}</span>
+          )}
+          {(Number(stopLoss) > 0 || Number(takeProfit) > 0) && (
+            <span className="italic text-muted-foreground">
+              {Number(stopLoss) > 0 && ` SL:${stopLoss}%`}
+              {Number(takeProfit) > 0 && ` TP:${takeProfit}%`}
+            </span>
+          )}
         </>
       )
     case "close-position":
       return (
         <>
-          <span className="font-bold">Close Position</span>{" "}
+          <span className="font-bold">Close All Positions</span>
+        </>
+      )
+    case "buy":
+      return (
+        <>
+          <span className="font-bold">Buy</span>{" "}
+          <span className="italic text-muted-foreground">
+            {amount} {unit}
+          </span>
+        </>
+      )
+    case "sell":
+      return (
+        <>
+          <span className="font-bold">Sell</span>{" "}
           <span className="italic text-muted-foreground">
             {amount} {unit}
           </span>
@@ -133,7 +164,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
   }
 }
 
-export function CanvasBlock({ id, config, values, onRemove, onValueChange }: CanvasBlockProps) {
+export function CanvasBlock({ id, config, values, onRemove, onValueChange, themeOverride }: CanvasBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -145,6 +176,11 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
   }
 
   const Icon = config.icon
+
+  // Get effective colors (themeOverride takes precedence)
+  const blockTheme = themeOverride?.blocks?.[config.type]
+  const effectiveColor = blockTheme?.color ?? config.color
+  const effectiveBgColor = blockTheme?.bgColor ?? config.bgColor
 
   // Helper to get category label for display
   const getCategoryLabel = (category: string): string => {
@@ -309,7 +345,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
             </div>
           </div>
 
-          <div className={`py-2 font-semibold ${config.color}`}>{conditionLabel}</div>
+          <div className={`py-2 font-semibold ${effectiveColor}`}>{conditionLabel}</div>
 
           <div className="flex items-end gap-3">
             <div className="space-y-2">
@@ -330,24 +366,53 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
 
   const renderActionParameters = () => {
     if (config.type === "open-position") {
+      const sideParam = config.parameters.find((p) => p.name === "side")
       const amountParam = config.parameters.find((p) => p.name === "amount")
       const unitParam = config.parameters.find((p) => p.name === "unit")
+      const leverageParam = config.parameters.find((p) => p.name === "leverage")
+      const stopLossParam = config.parameters.find((p) => p.name === "stopLoss")
+      const takeProfitParam = config.parameters.find((p) => p.name === "takeProfit")
 
       return (
-        <div className="flex items-end gap-3">
-          <div className="space-y-2">
-            <Label>Amount</Label>
-            {amountParam && renderParameter(amountParam)}
+        <div className="space-y-4">
+          <div className="flex items-end gap-3">
+            <div className="space-y-2">
+              <Label>Side</Label>
+              {sideParam && renderParameter(sideParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Amount</Label>
+              {amountParam && renderParameter(amountParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              {unitParam && renderParameter(unitParam)}
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Unit</Label>
-            {unitParam && renderParameter(unitParam)}
+          <div className="flex items-end gap-3">
+            <div className="space-y-2">
+              <Label>Leverage</Label>
+              {leverageParam && renderParameter(leverageParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Stop Loss (%)</Label> 
+              {stopLossParam && renderParameter(stopLossParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Take Profit (%)</Label>
+              {takeProfitParam && renderParameter(takeProfitParam)}
+            </div>
           </div>
         </div>
       )
     }
 
     if (config.type === "close-position") {
+      // No parameters for close-position
+      return null
+    }
+
+    if (config.type === "buy" || config.type === "sell") {
       const amountParam = config.parameters.find((p) => p.name === "amount")
       const unitParam = config.parameters.find((p) => p.name === "unit")
 
@@ -420,7 +485,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
           </div>
         </div>
 
-        <div className={`py-2 font-semibold ${config.color}`}>{crossingLabel}</div>
+        <div className={`py-2 font-semibold ${effectiveColor}`}>{crossingLabel}</div>
 
         {/* Second indicator row */}
         <div className="flex items-end gap-3">
@@ -441,16 +506,16 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange }: Can
   const isIncreasedDecreased = config.type === "increased-by" || config.type === "decreased-by"
   const isGreaterLower = config.type === "greater-than" || config.type === "lower-than"
   const isActionBlock =
-    config.type === "open-position" || config.type === "close-position" || config.type === "notify-me"
+    config.type === "open-position" || config.type === "close-position" || config.type === "notify-me" || config.type === "buy" || config.type === "sell"
 
   return (
-    <div ref={setNodeRef} style={style} onClick={(e) => e.stopPropagation()} className={`relative rounded-lg border-2 ${config.bgColor} bg-card shadow-sm`}>
-      <div className={`flex items-center justify-between p-3 border-b border-border rounded-t-md ${config.bgColor}`}>
+    <div ref={setNodeRef} style={style} onClick={(e) => e.stopPropagation()} className={`relative rounded-lg border-2 ${effectiveBgColor} bg-card shadow-sm`}>
+      <div className={`flex items-center justify-between p-3 border-b border-border rounded-t-md ${effectiveBgColor}`}>
         <div className="flex items-center gap-3">
           <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
-          <div className={`flex h-8 w-8 items-center justify-center rounded-md ${config.bgColor} ${config.color}`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-md ${effectiveBgColor} ${effectiveColor}`}>
             <Icon className="h-4 w-4" />
           </div>
           <span className="text-sm">{generateDynamicTitle(config, values)}</span>

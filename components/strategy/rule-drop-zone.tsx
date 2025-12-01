@@ -6,7 +6,7 @@ import { useState } from "react"
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CanvasBlock } from "./canvas-block"
-import type { BlockConfig, BlockCategory } from "./block-types"
+import type { BlockConfig, BlockCategory, CustomTheme } from "./block-types"
 import { Plus, Pencil, Check, X, ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,7 @@ interface RuleDropZoneProps {
   onDelete?: () => void
   canDelete?: boolean
   onMobileDropZoneClick?: (groupId: string, category: BlockCategory) => void
+  themeOverride?: CustomTheme
 }
 
 export function RuleDropZone({
@@ -42,6 +43,7 @@ export function RuleDropZone({
   onDelete,
   canDelete = true,
   onMobileDropZoneClick,
+  themeOverride,
 }: RuleDropZoneProps) {
   const [isOpen, setIsOpen] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -173,6 +175,7 @@ export function RuleDropZone({
                             values={item.values}
                             onRemove={() => onRemoveBlock(item.id, "condition")}
                             onValueChange={(name, value) => onValueChange(item.id, name, value, "condition")}
+                            themeOverride={themeOverride}
                           />
                         ))}
                       </div>
@@ -228,6 +231,7 @@ export function RuleDropZone({
                             values={item.values}
                             onRemove={() => onRemoveBlock(item.id, "action")}
                             onValueChange={(name, value) => onValueChange(item.id, name, value, "action")}
+                            themeOverride={themeOverride}
                           />
                         ))}
                       </div>

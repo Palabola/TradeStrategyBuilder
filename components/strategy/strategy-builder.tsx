@@ -31,13 +31,14 @@ import {
   type BlockType,
   type BlockCategory,
   type IndicatorOption,
+  type CustomTheme,
   StrategyTemplate,
   PredefinedStrategyTemplate,
 } from "./block-types"
 import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { predefinedStrategies } from "@/lib/predefined-strategies"
-import { getStrategyById, saveStrategyToStorage } from "@/lib/strategy-storage"
+import { predefinedStrategies as defaultPredefinedStrategies } from "@/lib/predefined-strategies"
+import { getStrategyById as defaultGetStrategyById, type SavedStrategy } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface CanvasItem {
@@ -65,6 +66,10 @@ interface StrategyBuilderProps {
   indicatorOptions?: IndicatorOption[]
   unitOptions?: string[]
   channelOptions?: string[]
+  predefinedStrategies?: PredefinedStrategyTemplate[]
+  getStrategyById?: (id: string) => SavedStrategy | null
+  onSave?: (strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => void
+  themeOverride?: CustomTheme
 }
 
 /**
@@ -157,10 +162,14 @@ function parseStrategyToRuleGroups(
     const actionItems: CanvasItem[] = (rule.actions || [])
       .map((action: any) => {
         let blockType: BlockType
-        if (action.action === "BUY") {
+        if (action.action === "OPEN") {
           blockType = "open-position"
-        } else if (action.action === "SELL") {
+        } else if (action.action === "CLOSE") {
           blockType = "close-position"
+        } else if (action.action === "BUY") {
+          blockType = "buy"
+        } else if (action.action === "SELL") {
+          blockType = "sell"
         } else if (action.action === "NOTIFY") {
           blockType = "notify-me"
         } else {
@@ -172,7 +181,16 @@ function parseStrategyToRuleGroups(
 
         const values: Record<string, string | number> = {}
         if (action.options) {
-          if (blockType === "open-position" || blockType === "close-position") {
+          if (blockType === "open-position") {
+            values.side = action.options.side || "LONG"
+            values.amount = action.options.amount || ""
+            values.unit = action.options.unit || "USD"
+            values.leverage = action.options.leverage || "No"
+            values.stopLoss = action.options.stopLoss ?? 0
+            values.takeProfit = action.options.takeProfit ?? 0
+          } else if (blockType === "close-position") {
+            // No parameters for close-position
+          } else if (blockType === "buy" || blockType === "sell") {
             values.amount = action.options.amount || ""
             values.unit = action.options.unit || "USD"
           } else if (blockType === "notify-me") {
@@ -213,6 +231,10 @@ export function StrategyBuilder({
   indicatorOptions = defaultIndicatorOptions,
   unitOptions = defaultUnitOptions,
   channelOptions = defaultChannelOptions,
+  predefinedStrategies = defaultPredefinedStrategies,
+  getStrategyById = defaultGetStrategyById,
+  onSave,
+  themeOverride,
 }: StrategyBuilderProps) {
   // Create custom block configs with the provided options
   const customBlockConfigs = createCustomBlockConfigs(
@@ -436,7 +458,9 @@ export function StrategyBuilder({
       strategyId: currentStrategyId || result.data!.strategyId,
     }
 
-    saveStrategyToStorage(strategyToSave)
+    if (onSave) {
+      onSave(strategyToSave)
+    }
 
     setCurrentStrategyId(strategyToSave.strategyId)
 
@@ -498,6 +522,30 @@ export function StrategyBuilder({
         const blockLabel = `${group.name}, Action ${itemIndex + 1} (${item.config.label})`
 
         if (item.config.type === "open-position") {
+          if (!item.values.side) errors.push(`${blockLabel}: Side is required`)
+          if (item.values.amount === undefined || item.values.amount === "")
+            errors.push(`${blockLabel}: Amount is required`)
+          if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
+          return {
+            index: itemIndex,
+            action: "OPEN" as const,
+            options: {
+              side: item.values.side,
+              amount: item.values.amount,
+              unit: item.values.unit,
+              leverage: item.values.leverage,
+              stopLoss: item.values.stopLoss,
+              takeProfit: item.values.takeProfit,
+            },
+          }
+        } else if (item.config.type === "close-position") {
+          // No parameters for close-position
+          return {
+            index: itemIndex,
+            action: "CLOSE" as const,
+            options: {},
+          }
+        } else if (item.config.type === "buy") {
           if (item.values.amount === undefined || item.values.amount === "")
             errors.push(`${blockLabel}: Amount is required`)
           if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
@@ -509,7 +557,7 @@ export function StrategyBuilder({
               unit: item.values.unit,
             },
           }
-        } else if (item.config.type === "close-position") {
+        } else if (item.config.type === "sell") {
           if (item.values.amount === undefined || item.values.amount === "")
             errors.push(`${blockLabel}: Amount is required`)
           if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
@@ -738,7 +786,7 @@ export function StrategyBuilder({
                   variant={blockCategory === "condition" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setBlockCategory("condition")}
-                  className={blockCategory === "condition" ? "" : "bg-transparent"}
+                  className={`flex-1 ${blockCategory === "condition" ? "" : "bg-transparent"}`}
                 >
                   Conditions
                 </Button>
@@ -746,7 +794,7 @@ export function StrategyBuilder({
                   variant={blockCategory === "action" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setBlockCategory("action")}
-                  className={blockCategory === "action" ? "" : "bg-transparent"}
+                  className={`flex-1 ${blockCategory === "action" ? "" : "bg-transparent"}`}
                 >
                   Actions
                 </Button>
@@ -889,6 +937,7 @@ export function StrategyBuilder({
                   onDelete={() => removeRuleGroup(group.id)}
                   canDelete={ruleGroups.length > 1}
                   onMobileDropZoneClick={handleMobileDropZoneClick}
+                  themeOverride={themeOverride}
                 />
               ))}
             </div>

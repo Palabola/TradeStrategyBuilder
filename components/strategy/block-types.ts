@@ -9,6 +9,8 @@ import {
   DollarSign,
   LogOut,
   Bell,
+  ShoppingCart,
+  Banknote,
 } from "lucide-react"
 
 export type ConditionBlockType =
@@ -19,7 +21,7 @@ export type ConditionBlockType =
   | "crossing-above"
   | "crossing-below"
 
-export type ActionBlockType = "open-position" | "close-position" | "notify-me"
+export type ActionBlockType = "open-position" | "close-position" | "buy" | "sell" | "notify-me"
 
 export type BlockType = ConditionBlockType | ActionBlockType
 
@@ -75,10 +77,14 @@ export interface StrategyTemplate {
     }[]
     actions: {
       index: number
-      action: "BUY" | "SELL" | "NOTIFY"
+      action: "OPEN" | "CLOSE" |"BUY" | "SELL" | "NOTIFY"
       options: {
+        side?: string
         amount?: number
         unit?: string
+        leverage?: string
+        stopLoss?: number
+        takeProfit?: number
         channel?: string
         message?: string
       }
@@ -86,6 +92,14 @@ export interface StrategyTemplate {
   }[]
 }
 
+export interface CustomTheme {
+  blocks: {
+    [key in BlockType]?: {
+      color?: string
+      bgColor?: string
+    }
+  }
+}
 
 export const candleOptions = ["1min", "5min", "15min", "30min", "1h", "4h", "24h", "1w"]
 
@@ -102,6 +116,14 @@ export const indicatorOptions: IndicatorOption[] = [
 export const unitOptions = ["USD", "%"]
 
 export const channelOptions = ["Telegram", "Notification", "Email"]
+
+export const sideOptions = ["LONG", "SHORT"]
+
+export const leverageOptions = [
+  { label: "No", value: "1" },
+  { label: "5x", value: "5" },
+  { label: "10x", value: "10" },
+]
 
 export const blockConfigs: Record<BlockType, BlockConfig> = {
   "increased-by": {
@@ -142,7 +164,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     description: "Trigger when indicator decreases by value",
     icon: TrendingDown,
     color: "text-orange",
-    bgColor: "bg-orange/10 border-orange/30",
+    bgColor: "bg-destructive/10 border-destructive/30",
     category: "condition",
     parameters: [
       {
@@ -334,6 +356,69 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     category: "action",
     parameters: [
       {
+        name: "side",
+        type: "select",
+        label: "Side",
+        options: sideOptions,
+        default: "LONG",
+      },
+      {
+        name: "amount",
+        type: "number",
+        label: "Amount",
+        placeholder: "100",
+        default: 100,
+      },
+      {
+        name: "unit",
+        type: "select",
+        label: "Unit",
+        options: unitOptions,
+        default: "USD",
+      },
+      {
+        name: "leverage",
+        type: "select",
+        label: "Leverage",
+        options: leverageOptions.map(l => l.label),
+        default: "No",
+      },
+      {
+        name: "stopLoss",
+        type: "number",
+        label: "Stop Loss (%)",
+        placeholder: "0",
+        default: 0,
+      },
+      {
+        name: "takeProfit",
+        type: "number",
+        label: "Take Profit (%)",
+        placeholder: "0",
+        default: 0,
+      },
+    ],
+  },
+  "close-position": {
+    type: "close-position",
+    label: "Close Positions",
+    description: "Close all open positions",
+    icon: LogOut,
+    color: "text-destructive",
+    bgColor: "bg-destructive/10 border-destructive/30",
+    category: "action",
+    parameters: [],
+  },
+  "buy": {
+    type: "buy",
+    label: "Buy",
+    description: "Execute a buy order",
+    icon: ShoppingCart,
+    color: "text-success",
+    bgColor: "bg-success/10 border-success/30",
+    category: "action",
+    parameters: [
+      {
         name: "amount",
         type: "number",
         label: "Amount",
@@ -349,11 +434,11 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
       },
     ],
   },
-  "close-position": {
-    type: "close-position",
-    label: "Close Position",
-    description: "Close an existing position",
-    icon: LogOut,
+  "sell": {
+    type: "sell",
+    label: "Sell",
+    description: "Execute a sell order",
+    icon: Banknote,
     color: "text-destructive",
     bgColor: "bg-destructive/10 border-destructive/30",
     category: "action",
@@ -370,7 +455,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         type: "select",
         label: "Unit",
         options: unitOptions,
-        default: "%",
+        default: "USD",
       },
     ],
   },
@@ -410,7 +495,7 @@ export const conditionBlocks: ConditionBlockType[] = [
   "crossing-below",
 ]
 
-export const actionBlocks: ActionBlockType[] = ["open-position", "close-position", "notify-me"]
+export const actionBlocks: ActionBlockType[] = ["open-position", "close-position", "buy", "sell", "notify-me"]
 
 export const availableBlocks: BlockType[] = [...conditionBlocks, ...actionBlocks]
 
