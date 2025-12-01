@@ -1,12 +1,34 @@
+import { IndicatorOption } from "../components/strategy/block-types"
 import { candleService, type Candle } from "./candle-service"
 import { indicatorsService } from "./indicators-service"
 import type { SavedStrategy } from "./strategy-storage"
 
 // Supported indicators
-export type IndicatorType = "Price" | "RSI" | "MACD" | "MA" | "EMA(20)" | "EMA(50)" | "Bollinger Bands"
+export const supportedIndicators: IndicatorOption[] = [
+  { name: "Price", category: "price" },
+  { name: "MA", category: "price" },
+  { name: "EMA(20)", category: "price" },
+  { name: "EMA(50)", category: "price" },
+  { name: "Bollinger Bands", category: "price" },
+  { name: "Value", category: "oscillator" },
+  { name: "RSI(7)", category: "oscillator" },
+  { name: "RSI(14)", category: "oscillator" },
+  { name: "MACD", category: "oscillator" },
+]
 
 // Supported timeframes (matching candle-service)
 export type Timeframe = "1min" | "5min" | "15min" | "30min" | "1h" | "4h" | "24h" | "1w"
+
+export const supportedTimeframes: Timeframe[] = [
+  "1min",
+  "5min",
+  "15min",
+  "30min",
+  "1h",
+  "4h",
+  "24h",
+  "1w",
+]
 
 // Condition types from block-types
 export type ConditionType = 
@@ -81,7 +103,7 @@ export class StrategyRunner {
    */
   async getIndicatorValue(
     symbol: string,
-    indicator: IndicatorType,
+    indicator: string,
     timeframe: Timeframe
   ): Promise<number | null> {
     try {
@@ -95,7 +117,7 @@ export class StrategyRunner {
         case "Price":
           return candles[candles.length - 1].close
 
-        case "RSI":
+        case "RSI(14)":
           return indicatorsService.getLatestRSI(candles, 14)
 
         case "MACD": {
@@ -132,7 +154,7 @@ export class StrategyRunner {
    */
   async getPreviousIndicatorValue(
     symbol: string,
-    indicator: IndicatorType,
+    indicator: string,
     timeframe: Timeframe
   ): Promise<number | null> {
     try {
@@ -149,8 +171,13 @@ export class StrategyRunner {
         case "Price":
           return previousCandles[previousCandles.length - 1].close
 
-        case "RSI": {
+        case "RSI(14)": {
           const rsiValues = indicatorsService.calculateRSI(previousCandles, 14)
+          return rsiValues[rsiValues.length - 1]
+        }
+
+        case "RSI(7)": {
+          const rsiValues = indicatorsService.calculateRSI(previousCandles, 7)
           return rsiValues[rsiValues.length - 1]
         }
 
@@ -209,7 +236,7 @@ export class StrategyRunner {
       switch (type) {
         case "increased-by":
         case "decreased-by": {
-          const indicator = condition.indicator1 as IndicatorType
+          const indicator = condition.indicator1 as string
           const timeframe = condition.timeframe1 as Timeframe
           const targetPercentage = Number(condition.value) || 0
 
@@ -233,13 +260,20 @@ export class StrategyRunner {
 
         case "greater-than":
         case "lower-than": {
-          const indicator1 = condition.indicator1 as IndicatorType
+          const indicator1 = condition.indicator1 as string
           const timeframe1 = condition.timeframe1 as Timeframe
-          const indicator2 = condition.indicator2 as IndicatorType
-          const timeframe2 = condition.timeframe2 as Timeframe
+          const indicator2 = condition.indicator2 as string
 
           const value1 = await this.getIndicatorValue(symbol, indicator1, timeframe1)
-          const value2 = await this.getIndicatorValue(symbol, indicator2, timeframe2)
+          
+          // Handle "Value" indicator2 - use the value field directly
+          let value2: number | null
+          if (indicator2 === "Value") {
+            value2 = condition.value !== undefined ? Number(condition.value) : null
+          } else {
+            const timeframe2 = condition.timeframe2 as Timeframe
+            value2 = await this.getIndicatorValue(symbol, indicator2, timeframe2)
+          }
 
           result.currentValue = value1
           result.comparisonValue = value2
@@ -256,15 +290,25 @@ export class StrategyRunner {
 
         case "crossing-above":
         case "crossing-below": {
-          const indicator1 = condition.indicator1 as IndicatorType
+          const indicator1 = condition.indicator1 as string
           const timeframe1 = condition.timeframe1 as Timeframe
-          const indicator2 = condition.indicator2 as IndicatorType
-          const timeframe2 = condition.timeframe2 as Timeframe
+          const indicator2 = condition.indicator2 as string
 
           const currentValue1 = await this.getIndicatorValue(symbol, indicator1, timeframe1)
           const previousValue1 = await this.getPreviousIndicatorValue(symbol, indicator1, timeframe1)
-          const currentValue2 = await this.getIndicatorValue(symbol, indicator2, timeframe2)
-          const previousValue2 = await this.getPreviousIndicatorValue(symbol, indicator2, timeframe2)
+          
+          // Handle "Value" indicator2 - use the value field directly (static value, no previous)
+          let currentValue2: number | null
+          let previousValue2: number | null
+          if (indicator2 === "Value") {
+            const staticValue = condition.value !== undefined ? Number(condition.value) : null
+            currentValue2 = staticValue
+            previousValue2 = staticValue // Static value doesn't change
+          } else {
+            const timeframe2 = condition.timeframe2 as Timeframe
+            currentValue2 = await this.getIndicatorValue(symbol, indicator2, timeframe2)
+            previousValue2 = await this.getPreviousIndicatorValue(symbol, indicator2, timeframe2)
+          }
 
           result.currentValue = currentValue1
           result.previousValue = previousValue1

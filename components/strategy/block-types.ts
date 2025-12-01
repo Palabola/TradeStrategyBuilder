@@ -101,16 +101,16 @@ export interface CustomTheme {
   }
 }
 
+export const tradingPairs = ["BTC/USD", "ETH/USD", "SOL/USD", "DOGE/USD", "XRP/USD", "ADA/USD"]
+
 export const candleOptions = ["1min", "5min", "15min", "30min", "1h", "4h", "24h", "1w"]
 
 export const indicatorOptions: IndicatorOption[] = [
   { name: "Price", category: "price" },
   { name: "MA", category: "price" },
-  { name: "EMA(20)", category: "price" },
-  { name: "EMA(50)", category: "price" },
-  { name: "Bollinger Bands", category: "price" },
-  { name: "RSI", category: "oscillator" },
-  { name: "MACD", category: "oscillator" },
+  { name: "Value", category: "oscillator" },
+  { name: "RSI(7)", category: "oscillator" },
+  { name: "RSI(14)", category: "oscillator" }
 ]
 
 export const unitOptions = ["USD", "%"]
@@ -204,7 +204,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         type: "select",
         label: "Indicator",
         indicatorOptions: indicatorOptions,
-        default: "RSI",
+        default: "EMA(20)",
       },
       {
         name: "candles1",
@@ -243,7 +243,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         type: "select",
         label: "Indicator",
         indicatorOptions: indicatorOptions,
-        default: "RSI",
+        default: "EMA(20)",
       },
       {
         name: "candles1",
@@ -498,5 +498,3 @@ export const conditionBlocks: ConditionBlockType[] = [
 export const actionBlocks: ActionBlockType[] = ["open-position", "close-position", "buy", "sell", "notify-me"]
 
 export const availableBlocks: BlockType[] = [...conditionBlocks, ...actionBlocks]
-
-export const tradingPairs = ["BTC/USD", "ETH/USD", "SOL/USD", "DOGE/USD", "XRP/USD", "ADA/USD"]

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import type { BlockConfig, Parameter, IndicatorOption, CustomTheme } from "./block-types"
@@ -70,7 +70,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
           </span>{" "}
           <span className="font-bold">Greater than</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2} ({candles2})
+            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
           </span>
         </>
       )
@@ -82,7 +82,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
           </span>{" "}
           <span className="font-bold">Lower than</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2} ({candles2})
+            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
           </span>
         </>
       )
@@ -94,7 +94,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
           </span>{" "}
           <span className="font-bold">Crossing above</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2} ({candles2})
+            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
           </span>
         </>
       )
@@ -106,7 +106,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
           </span>{" "}
           <span className="font-bold">Crossing below</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2} ({candles2})
+            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
           </span>
         </>
       )
@@ -332,6 +332,10 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
         ? indicator2Param.indicatorOptions.filter((ind) => ind.category === indicator1Category)
         : indicator2Param?.indicatorOptions
 
+      // Check if indicator2 is "Value" - show numeric input instead
+      const indicator2Value = values.indicator2 ?? indicator2Param?.default ?? ""
+      const isValueSelected = indicator2Value === "Value"
+
       return (
         <div className="space-y-4">
           <div className="flex items-end gap-3">
@@ -352,10 +356,23 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
               <Label>Target Indicator</Label>
               {indicator2Param && renderIndicatorSelect(indicator2Param, filteredIndicator2Options)}
             </div>
-            <div className="space-y-2">
-              <Label>Candles</Label>
-              {candles2Param && renderParameter(candles2Param)}
-            </div>
+            {isValueSelected ? (
+              <div className="space-y-2">
+                <Label>Value</Label>
+                <Input
+                  type="number"
+                  value={values.value ?? ""}
+                  onChange={(e) => onValueChange("value", parseFloat(e.target.value) || 0)}
+                  placeholder="Enter value"
+                  className="w-24"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Candles</Label>
+                {candles2Param && renderParameter(candles2Param)}
+              </div>
+            )}
           </div>
         </div>
       )
@@ -471,6 +488,10 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
       ? indicator2Param.indicatorOptions.filter((ind) => ind.category === indicator1Category)
       : indicator2Param?.indicatorOptions
 
+    // Check if indicator2 is "Value" - show numeric input instead
+    const indicator2Value = values.indicator2 ?? indicator2Param?.default ?? ""
+    const isValueSelected = indicator2Value === "Value"
+
     return (
       <div className="space-y-4">
         {/* First indicator row */}
@@ -493,10 +514,23 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
             <Label>Target Indicator</Label>
             {indicator2Param && renderIndicatorSelect(indicator2Param, filteredIndicator2Options)}
           </div>
-          <div className="space-y-2">
-            <Label>Candles</Label>
-            {candles2Param && renderParameter(candles2Param)}
-          </div>
+          {isValueSelected ? (
+            <div className="space-y-2">
+              <Label>Value</Label>
+              <Input
+                type="number"
+                value={values.value ?? ""}
+                onChange={(e) => onValueChange("value", parseFloat(e.target.value) || 0)}
+                placeholder="Enter value"
+                className="w-24"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Candles</Label>
+              {candles2Param && renderParameter(candles2Param)}
+            </div>
+          )}
         </div>
       </div>
     )

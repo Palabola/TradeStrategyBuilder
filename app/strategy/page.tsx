@@ -1,6 +1,7 @@
 import { Header } from "@/components/header"
 import { candleOptions, channelOptions, indicatorOptions, unitOptions } from "../../components/strategy/block-types"
 import { StrategyPageClient } from "./client"
+import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 
 export default async function StrategyPage({
   searchParams,
@@ -9,8 +10,8 @@ export default async function StrategyPage({
 }) {
   const { strategyId } = await searchParams
 
-  const candleOptionsOverride = candleOptions;
-  const indicatorOptionsOverride = indicatorOptions;
+  const candleOptionsOverride = supportedTimeframes;
+  const indicatorOptionsOverride = supportedIndicators;
   const unitOptionsOverride = unitOptions;
   const channelOptionsOverride = channelOptions;
   const themeOverride = null;
