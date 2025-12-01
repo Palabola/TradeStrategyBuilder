@@ -34,8 +34,10 @@ import {
   type CustomTheme,
   StrategyTemplate,
   PredefinedStrategyTemplate,
+  STATIC_SYSTEM_PROMPT_V1,
 } from "./block-types"
-import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate } from "lucide-react"
+import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { predefinedStrategies as defaultPredefinedStrategies } from "@/lib/predefined-strategies"
 import { getStrategyById as defaultGetStrategyById, type SavedStrategy } from "@/lib/strategy-storage"
@@ -70,6 +72,8 @@ interface StrategyBuilderProps {
   getStrategyById?: (id: string) => SavedStrategy | null
   onSave?: (strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => void
   themeOverride?: CustomTheme
+  supportedAIModels?: string[]
+  callAIFunction?: ( systemPrompt: string, userPrompts: string[], model: string) => Promise<string>
 }
 
 /**
@@ -239,7 +243,10 @@ export function StrategyBuilder({
   getStrategyById = defaultGetStrategyById,
   onSave,
   themeOverride,
+  supportedAIModels = ['grok'],
+  callAIFunction,
 }: StrategyBuilderProps) {
+
   // Create custom block configs with the provided options (memoized to prevent infinite loops)
   const customBlockConfigs = useMemo(
     () => createCustomBlockConfigs(candleOptions, indicatorOptions, unitOptions, channelOptions),
@@ -266,6 +273,14 @@ export function StrategyBuilder({
     category: BlockCategory
   } | null>(null)
   const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(strategyId || null)
+
+  // AI Builder state
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [selectedAIModel, setSelectedAIModel] = useState<string>(supportedAIModels[0] || "")
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiGeneratedJson, setAiGeneratedJson] = useState<string>("")
+  const [aiIsLoading, setAiIsLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const loadStrategyFromJson = useCallback(
     (parsed: StrategyTemplate) => {
@@ -908,6 +923,17 @@ export function StrategyBuilder({
                 <Upload className="h-4 w-4" />
                 Import
               </Button>
+              {supportedAIModels.length > 0 && callAIFunction && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAiDialogOpen(true)}
+                  className="gap-2 bg-transparent"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  AI Builder
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handlePreview} className="gap-2 bg-transparent">
                 <Eye className="h-4 w-4" />
                 Preview
@@ -1030,6 +1056,146 @@ export function StrategyBuilder({
               <Button size="sm" onClick={handleImportStrategy}>
                 Import Strategy
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {aiDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                AI Strategy Builder
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setAiDialogOpen(false)
+                  setAiPrompt("")
+                  setAiGeneratedJson("")
+                  setAiError(null)
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Describe your trading strategy in natural language and let AI generate it for you.
+            </p>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai-model">AI Model</Label>
+                <Select value={selectedAIModel} onValueChange={setSelectedAIModel}>
+                  <SelectTrigger id="ai-model">
+                    <SelectValue placeholder="Select an AI model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supportedAIModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ai-prompt">Strategy Description</Label>
+                <Textarea
+                  id="ai-prompt"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Example: Create a strategy that opens a long position when RSI crosses above 30 and the price is above the 50-day moving average. Close the position when RSI goes above 70."
+                  className="min-h-[120px]"
+                />
+              </div>
+
+              <Button
+                size="sm"
+                onClick={async () => {
+                  if (!callAIFunction || !aiPrompt.trim() || !selectedAIModel) return
+                  setAiIsLoading(true)
+                  setAiError(null)
+                  setAiGeneratedJson("")
+                  try {
+                    const systemPrompt = STATIC_SYSTEM_PROMPT_V1(
+                      tradingPairs,
+                      indicatorOptions.map(option => option.name),
+                      candleOptions,
+                      unitOptions
+                    )
+                    const result = await callAIFunction(systemPrompt, [aiPrompt], selectedAIModel)
+                    setAiGeneratedJson(result)
+                  } catch (error) {
+                    setAiError(error instanceof Error ? error.message : "Failed to generate strategy")
+                  } finally {
+                    setAiIsLoading(false)
+                  }
+                }}
+                disabled={aiIsLoading || !aiPrompt.trim() || !selectedAIModel}
+                className="w-full gap-2"
+              >
+                {aiIsLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Generate Strategy
+                  </>
+                )}
+              </Button>
+
+              {aiError && <p className="text-sm text-destructive">{aiError}</p>}
+
+              {aiGeneratedJson && (
+                <div className="space-y-2">
+                  <Label>Generated Strategy JSON</Label>
+                  <Textarea
+                    value={aiGeneratedJson}
+                    onChange={(e) => setAiGeneratedJson(e.target.value)}
+                    className="min-h-[200px] font-mono text-sm"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setAiDialogOpen(false)
+                        setAiPrompt("")
+                        setAiGeneratedJson("")
+                        setAiError(null)
+                      }}
+                      className="bg-transparent"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        try {
+                          const parsed = JSON.parse(aiGeneratedJson)
+                          loadStrategyFromJson(parsed)
+                          setAiDialogOpen(false)
+                          setAiPrompt("")
+                          setAiGeneratedJson("")
+                          setAiError(null)
+                        } catch (error) {
+                          setAiError("Invalid JSON format. Please check the generated output.")
+                        }
+                      }}
+                    >
+                      Use Strategy
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

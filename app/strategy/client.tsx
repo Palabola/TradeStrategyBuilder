@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Settings, Plus, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { agentService, supportedModels } from "../../lib/agent-service"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -79,6 +80,11 @@ export function StrategyPageClient({
 
   const handleSave = useCallback((strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => {
     saveStrategyToStorage(strategy)
+  }, [])
+
+  // AI function wrapper - delegates to agentService.callAI
+  const handleCallAI = useCallback(async (systemPrompt: string, userPrompts: string[], model: string): Promise<string> => {
+    return await agentService.callAI(systemPrompt, userPrompts, model)
   }, [])
 
   // Compute the actual theme based on selection
@@ -263,6 +269,8 @@ export function StrategyPageClient({
         channelOptions={channelOptions}
         onSave={handleSave}
         themeOverride={computedTheme}
+        supportedAIModels={supportedModels}
+        callAIFunction={handleCallAI}
       />
     </div>
   )

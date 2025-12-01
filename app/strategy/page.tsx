@@ -1,5 +1,5 @@
 import { Header } from "@/components/header"
-import { candleOptions, channelOptions, indicatorOptions, unitOptions } from "../../components/strategy/block-types"
+import { channelOptions, unitOptions } from "../../components/strategy/block-types"
 import { StrategyPageClient } from "./client"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 
