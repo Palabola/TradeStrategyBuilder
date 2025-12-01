@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { StrategyBuilder } from "@/components/strategy/strategy-builder"
 import { saveStrategyToStorage, type SavedStrategy } from "@/lib/strategy-storage"
 import type { IndicatorOption, CustomTheme, BlockType } from "@/components/strategy/block-types"
@@ -15,8 +15,8 @@ import { Badge } from "@/components/ui/badge"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
-// Generate grayscale theme for all blocks
-function generateGrayscaleTheme(): CustomTheme {
+// Pre-compute themes at module level for stability
+const GRAYSCALE_THEME: CustomTheme = (() => {
   const blocks: CustomTheme["blocks"] = {}
   const blockTypes = Object.keys(blockConfigs) as BlockType[]
   
@@ -28,10 +28,9 @@ function generateGrayscaleTheme(): CustomTheme {
   }
   
   return { blocks }
-}
+})()
 
-// Generate colored theme using the current block colors from blockConfigs
-function generateColoredTheme(): CustomTheme {
+const COLORED_THEME: CustomTheme = (() => {
   const blocks: CustomTheme["blocks"] = {}
   const blockTypes = Object.keys(blockConfigs) as BlockType[]
   
@@ -44,7 +43,7 @@ function generateColoredTheme(): CustomTheme {
   }
   
   return { blocks }
-}
+})()
 
 // Available indicator categories
 const indicatorCategories = ["price", "oscillator", "volume", "volatility"]
@@ -78,17 +77,17 @@ export function StrategyPageClient({
   const [newIndicatorName, setNewIndicatorName] = useState("")
   const [newIndicatorCategory, setNewIndicatorCategory] = useState("price")
 
-  const handleSave = (strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => {
+  const handleSave = useCallback((strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => {
     saveStrategyToStorage(strategy)
-  }
+  }, [])
 
   // Compute the actual theme based on selection
   const computedTheme = useMemo((): CustomTheme | undefined => {
     switch (themeOption) {
       case "grayscale":
-        return generateGrayscaleTheme()
+        return GRAYSCALE_THEME
       case "colored":
-        return generateColoredTheme()
+        return COLORED_THEME
       case "none":
       default:
         return initialThemeOverride ?? undefined

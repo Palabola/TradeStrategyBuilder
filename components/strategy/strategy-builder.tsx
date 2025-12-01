@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import {
   DndContext,
   type DragEndEvent,
@@ -236,12 +236,10 @@ export function StrategyBuilder({
   onSave,
   themeOverride,
 }: StrategyBuilderProps) {
-  // Create custom block configs with the provided options
-  const customBlockConfigs = createCustomBlockConfigs(
-    candleOptions,
-    indicatorOptions,
-    unitOptions,
-    channelOptions
+  // Create custom block configs with the provided options (memoized to prevent infinite loops)
+  const customBlockConfigs = useMemo(
+    () => createCustomBlockConfigs(candleOptions, indicatorOptions, unitOptions, channelOptions),
+    [candleOptions, indicatorOptions, unitOptions, channelOptions]
   )
 
   const [strategyName, setStrategyName] = useState("New Strategy")
@@ -802,7 +800,7 @@ export function StrategyBuilder({
             </CardHeader>
             <CardContent className="space-y-3">
               {displayedBlocks.map((blockType) => (
-                <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={customBlockConfigs[blockType]} />
+                <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={customBlockConfigs[blockType]} themeOverride={themeOverride} />
               ))}
             </CardContent>
           </Card>
@@ -1092,16 +1090,19 @@ export function StrategyBuilder({
           <div className="space-y-2 max-h-[60vh] overflow-auto">
             {(mobileBlockPickerTarget?.category === "condition" ? conditionBlocks : actionBlocks).map((blockType) => {
               const config = customBlockConfigs[blockType]
+              const blockTheme = themeOverride?.blocks?.[blockType]
+              const effectiveColor = blockTheme?.color ?? config.color
+              const effectiveBgColor = blockTheme?.bgColor ?? config.bgColor
               return (
                 <button
                   key={blockType}
                   onClick={() => handleMobileBlockSelect(blockType)}
-                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors hover:opacity-80 ${config.bgColor}`}
+                  className={`w-full text-left p-3 rounded-lg border-2 transition-colors hover:opacity-80 ${effectiveBgColor}`}
                 >
                   <div className="flex items-center gap-3">
-                    <config.icon className={`h-5 w-5 ${config.color}`} />
+                    <config.icon className={`h-5 w-5 ${effectiveColor}`} />
                     <div>
-                      <p className={`font-medium ${config.color}`}>{config.label}</p>
+                      <p className={`font-medium ${effectiveColor}`}>{config.label}</p>
                       <p className="text-xs text-muted-foreground">{config.description}</p>
                     </div>
                   </div>
@@ -1114,14 +1115,25 @@ export function StrategyBuilder({
 
       <DragOverlay>
         {activeId && activeConfig && (
-          <div className={`flex items-center gap-3 p-3 rounded-lg border-2 ${activeConfig.bgColor} bg-card shadow-lg`}>
-            <div className={`flex h-8 w-8 items-center justify-center rounded-md ${activeConfig.color}`}>
-              <activeConfig.icon className="h-4 w-4" />
-            </div>
-            <span className="font-medium">{activeConfig.label}</span>
-          </div>
+          <DragOverlayContent config={activeConfig} themeOverride={themeOverride} />
         )}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+// Separate component for DragOverlay content to avoid IIFE
+function DragOverlayContent({ config, themeOverride }: { config: BlockConfig; themeOverride?: CustomTheme }) {
+  const blockTheme = themeOverride?.blocks?.[config.type]
+  const effectiveColor = blockTheme?.color ?? config.color
+  const effectiveBgColor = blockTheme?.bgColor ?? config.bgColor
+  
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-lg border-2 ${effectiveBgColor} bg-card shadow-lg`}>
+      <div className={`flex h-8 w-8 items-center justify-center rounded-md ${effectiveColor}`}>
+        <config.icon className="h-4 w-4" />
+      </div>
+      <span className="font-medium">{config.label}</span>
+    </div>
   )
 }
