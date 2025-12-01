@@ -1,0 +1,270 @@
+"use client"
+
+import { useState, useMemo } from "react"
+import { StrategyBuilder } from "@/components/strategy/strategy-builder"
+import { saveStrategyToStorage, type SavedStrategy } from "@/lib/strategy-storage"
+import type { IndicatorOption, CustomTheme, BlockType } from "@/components/strategy/block-types"
+import { blockConfigs, candleOptions as defaultCandleOptions, indicatorOptions as defaultIndicatorOptions } from "@/components/strategy/block-types"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Settings, Plus, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+
+type ThemeOption = "none" | "grayscale" | "colored"
+
+// Generate grayscale theme for all blocks
+function generateGrayscaleTheme(): CustomTheme {
+  const blocks: CustomTheme["blocks"] = {}
+  const blockTypes = Object.keys(blockConfigs) as BlockType[]
+  
+  for (const blockType of blockTypes) {
+    blocks[blockType] = {
+      color: "text-gray-500",
+      bgColor: "bg-gray-500/10 border-gray-500/30",
+    }
+  }
+  
+  return { blocks }
+}
+
+// Generate colored theme using the current block colors from blockConfigs
+function generateColoredTheme(): CustomTheme {
+  const blocks: CustomTheme["blocks"] = {}
+  const blockTypes = Object.keys(blockConfigs) as BlockType[]
+  
+  for (const blockType of blockTypes) {
+    const config = blockConfigs[blockType]
+    blocks[blockType] = {
+      color: config.color,
+      bgColor: config.bgColor,
+    }
+  }
+  
+  return { blocks }
+}
+
+// Available indicator categories
+const indicatorCategories = ["price", "oscillator", "volume", "volatility"]
+
+interface StrategyPageClientProps {
+  strategyId?: string
+  candleOptions?: string[]
+  indicatorOptions?: IndicatorOption[]
+  unitOptions?: string[]
+  channelOptions?: string[]
+  themeOverride?: CustomTheme | null
+}
+
+export function StrategyPageClient({
+  strategyId,
+  candleOptions: initialCandleOptions,
+  indicatorOptions: initialIndicatorOptions,
+  unitOptions,
+  channelOptions,
+  themeOverride: initialThemeOverride,
+}: StrategyPageClientProps) {
+  const [themeOption, setThemeOption] = useState<ThemeOption>("none")
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  
+  // Candle options state
+  const [candleOptions, setCandleOptions] = useState<string[]>(initialCandleOptions ?? defaultCandleOptions)
+  const [newCandle, setNewCandle] = useState("")
+  
+  // Indicator options state
+  const [indicatorOptions, setIndicatorOptions] = useState<IndicatorOption[]>(initialIndicatorOptions ?? defaultIndicatorOptions)
+  const [newIndicatorName, setNewIndicatorName] = useState("")
+  const [newIndicatorCategory, setNewIndicatorCategory] = useState("price")
+
+  const handleSave = (strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => {
+    saveStrategyToStorage(strategy)
+  }
+
+  // Compute the actual theme based on selection
+  const computedTheme = useMemo((): CustomTheme | undefined => {
+    switch (themeOption) {
+      case "grayscale":
+        return generateGrayscaleTheme()
+      case "colored":
+        return generateColoredTheme()
+      case "none":
+      default:
+        return initialThemeOverride ?? undefined
+    }
+  }, [themeOption, initialThemeOverride])
+
+  // Generate a key that changes when options change to force StrategyBuilder to re-mount
+  const builderKey = useMemo(() => {
+    return `${themeOption}-${candleOptions.join(",")}-${indicatorOptions.map(i => `${i.name}:${i.category}`).join(",")}`
+  }, [themeOption, candleOptions, indicatorOptions])
+
+  // Candle options handlers
+  const addCandleOption = () => {
+    if (newCandle.trim() && !candleOptions.includes(newCandle.trim())) {
+      setCandleOptions([...candleOptions, newCandle.trim()])
+      setNewCandle("")
+    }
+  }
+
+  const removeCandleOption = (candle: string) => {
+    setCandleOptions(candleOptions.filter(c => c !== candle))
+  }
+
+  const resetCandleOptions = () => {
+    setCandleOptions(defaultCandleOptions)
+  }
+
+  // Indicator options handlers
+  const addIndicatorOption = () => {
+    if (newIndicatorName.trim() && !indicatorOptions.some(i => i.name === newIndicatorName.trim())) {
+      setIndicatorOptions([...indicatorOptions, { name: newIndicatorName.trim(), category: newIndicatorCategory }])
+      setNewIndicatorName("")
+    }
+  }
+
+  const removeIndicatorOption = (name: string) => {
+    setIndicatorOptions(indicatorOptions.filter(i => i.name !== name))
+  }
+
+  const resetIndicatorOptions = () => {
+    setIndicatorOptions(defaultIndicatorOptions)
+  }
+
+  return (
+    <div className="relative">
+      {/* Settings Button */}
+      <div className="absolute right-0 -top-16 z-10">
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Options
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[550px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Strategy Builder Options</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              {/* Theme Override Section */}
+              <div className="grid gap-2">
+                <Label htmlFor="theme-select">Theme Override</Label>
+                <Select value={themeOption} onValueChange={(value: ThemeOption) => setThemeOption(value)}>
+                  <SelectTrigger id="theme-select">
+                    <SelectValue placeholder="Select theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (Default)</SelectItem>
+                    <SelectItem value="grayscale">Grayscale</SelectItem>
+                    <SelectItem value="colored">Colored</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {themeOption === "none" && "Use default block colors"}
+                  {themeOption === "grayscale" && "All blocks displayed in grayscale"}
+                  {themeOption === "colored" && "Use vibrant colors from block configurations"}
+                </p>
+              </div>
+
+              {/* Candle Options Section */}
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <Label>Candle Options</Label>
+                  <Button variant="ghost" size="sm" onClick={resetCandleOptions} className="h-7 text-xs">
+                    Reset to Default
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {candleOptions.map((candle) => (
+                    <Badge key={candle} variant="secondary" className="gap-1 pr-1">
+                      {candle}
+                      <button
+                        onClick={() => removeCandleOption(candle)}
+                        className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g., 2h, 3d"
+                    value={newCandle}
+                    onChange={(e) => setNewCandle(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addCandleOption()}
+                    className="flex-1"
+                  />
+                  <Button variant="outline" size="sm" onClick={addCandleOption}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Indicator Options Section */}
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <Label>Indicator Options</Label>
+                  <Button variant="ghost" size="sm" onClick={resetIndicatorOptions} className="h-7 text-xs">
+                    Reset to Default
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {indicatorOptions.map((indicator) => (
+                    <Badge key={indicator.name} variant="secondary" className="gap-1 pr-1">
+                      <span>{indicator.name}</span>
+                      <span className="text-xs text-muted-foreground">({indicator.category})</span>
+                      <button
+                        onClick={() => removeIndicatorOption(indicator.name)}
+                        className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Indicator name"
+                    value={newIndicatorName}
+                    onChange={(e) => setNewIndicatorName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addIndicatorOption()}
+                    className="flex-1"
+                  />
+                  <Select value={newIndicatorCategory} onValueChange={setNewIndicatorCategory}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {indicatorCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" onClick={addIndicatorOption}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <StrategyBuilder
+        key={builderKey}
+        strategyId={strategyId}
+        candleOptions={candleOptions}
+        indicatorOptions={indicatorOptions}
+        unitOptions={unitOptions}
+        channelOptions={channelOptions}
+        onSave={handleSave}
+        themeOverride={computedTheme}
+      />
+    </div>
+  )
+}
