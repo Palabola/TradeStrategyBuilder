@@ -212,7 +212,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
 
     return (
       <Select value={String(value)} onValueChange={(v) => onValueChange(param.name, v)}>
-        <SelectTrigger>
+        <SelectTrigger className="min-w-[100px]">
           <SelectValue placeholder={`Select ${param.label}`} />
         </SelectTrigger>
         <SelectContent>
@@ -243,7 +243,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
       case "select":
         return (
           <Select value={String(value)} onValueChange={(v) => onValueChange(param.name, v)}>
-            <SelectTrigger>
+            <SelectTrigger className="min-w-[100px]">
               <SelectValue placeholder={`Select ${param.label}`} />
             </SelectTrigger>
             <SelectContent>

@@ -11,7 +11,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container px-4 py-8 mx-auto">
         <div className="flex flex-col gap-8">
           {/* Hero Section */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
