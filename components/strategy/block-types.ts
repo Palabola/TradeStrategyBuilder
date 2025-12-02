@@ -537,6 +537,7 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
    - Usable Indicators: ${usableIndicators.join(", ")}
    - Candle Lengths: ${candleLengths.join(", ")}
    - Trade Units: ${tradeUnits.join(", ")}
+   - Execution Options: ${JSON.stringify(runIntervalOptions.map(o => o.value))}
    - Available trade rules: 
       1. Increased By: usage the indicator has increased by a certain percentage over a specified timeframe.
       2. Decreased By: usage the indicator has decreased by a certain percentage over a specified timeframe.
@@ -559,6 +560,12 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
    StrategyTemplate {
      strategyName: string
      symbols: string[]
+     executionOptions?: {
+       runIntervalMinutes?: number
+       maximumExecuteCount?: number
+       intervalBetweenExecutionsMinutes?: number
+       maximumOpenPositions?: number
+     }
      rules: {
        name: string
        conditions: {
@@ -586,6 +593,12 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
        }[]
      }[]
    }\`\`\`
+    - Rules for execution Options:
+      - runIntervalMinutes: The frequency at which the strategy is executed (in minutes).
+      - maximumExecuteCount: The maximum number of times the strategy can be executed.
+      - intervalBetweenExecutionsMinutes: The minimum time between consecutive executions (in minutes). Set to 0 for no delay.
+      - maximumOpenPositions: The maximum number of open positions allowed for the strategy, only usable if 'OPEN' action is defined.
+
     - Rules for each condition:
     1 "increased-by": indicator1 has increased by value% over timeframe1
     2 "decreased-by": indicator1 has decreased by value% over timeframe1
@@ -613,6 +626,12 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
      {
       strategyName: "Buy when price drops",
       symbols: ["BTC/USD", "ETH/USD"],
+      executionOptions: {
+        runIntervalMinutes: 360,
+        maximumExecuteCount: 20,
+        intervalBetweenExecutionsMinutes: 360,
+        maximumOpenPositions: 1
+      },
       rules: [
         {
           name: "Buy the Dip",
@@ -648,6 +667,12 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
         "XRP/USD",
         "SOL/USD"
     ],
+    executionOptions: {
+        runIntervalMinutes: 30,
+        maximumExecuteCount: 100,
+        intervalBetweenExecutionsMinutes: 720,
+        maximumOpenPositions: 10
+    },
     "rules": [
         {
         "name": "Buy on low RSI",

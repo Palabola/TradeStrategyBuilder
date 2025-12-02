@@ -14,8 +14,8 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
       strategyName: "Buy when price drops",
       symbols: ["BTC/USD", "ETH/USD"],
       executionOptions: {
-        runIntervalMinutes: 60,
-        maximumExecuteCount: 10,
+        runIntervalMinutes: 360,
+        maximumExecuteCount: 20,
         intervalBetweenExecutionsMinutes: 360,
         maximumOpenPositions: 1
       },
