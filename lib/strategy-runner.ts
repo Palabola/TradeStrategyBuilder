@@ -58,7 +58,6 @@ export interface RuleEvaluation {
 }
 
 export interface StrategyEvaluation {
-  strategyId: string
   strategyName: string
   symbol: string
   evaluatedAt: Date
@@ -78,16 +77,29 @@ export class StrategyRunner {
 
   /**
    * Fetch candles with caching
+   * @param symbol - Trading pair symbol
+   * @param timeframe - Candle timeframe
+   * @param until - Optional timestamp to filter candles before this time
    */
-  async fetchCandles(symbol: string, timeframe: string): Promise<Candle[]> {
+  async fetchCandles(symbol: string, timeframe: string, until?: number): Promise<Candle[]> {
     const cacheKey = this.getCacheKey(symbol, timeframe)
     
+    let candles: Candle[]
+    
     if (this.candleCache.has(cacheKey)) {
-      return this.candleCache.get(cacheKey)!
+      candles = this.candleCache.get(cacheKey)!
+    } else {
+      // Convert symbol format from "BTC/USD" to "BTCUSD" for Kraken API
+      const krakenSymbol = symbol.replace("/", "")
+      candles = await candleService.fetchCandles(krakenSymbol, timeframe)
+      this.candleCache.set(cacheKey, candles)
     }
 
-    const candles = await candleService.fetchCandles(symbol, timeframe)
-    this.candleCache.set(cacheKey, candles)
+    // Filter candles if until timestamp is provided
+    if (until !== undefined) {
+      return candles.filter(candle => (candle.time * 1000) < until)
+    }
+    
     return candles
   }
 
@@ -100,14 +112,19 @@ export class StrategyRunner {
 
   /**
    * Get the current value of an indicator
+   * @param symbol - Trading pair symbol
+   * @param indicator - Indicator name
+   * @param timeframe - Candle timeframe
+   * @param until - Optional timestamp to filter candles before this time
    */
   async getIndicatorValue(
     symbol: string,
     indicator: string,
-    timeframe: Timeframe
+    timeframe: Timeframe,
+    until?: number
   ): Promise<number | null> {
     try {
-      const candles = await this.fetchCandles(symbol, timeframe)
+      const candles = await this.fetchCandles(symbol, timeframe, until)
       
       if (!candles || candles.length === 0) {
         return null
@@ -151,14 +168,19 @@ export class StrategyRunner {
 
   /**
    * Get the previous value of an indicator (for crossing/change detection)
+   * @param symbol - Trading pair symbol
+   * @param indicator - Indicator name
+   * @param timeframe - Candle timeframe
+   * @param until - Optional timestamp to filter candles before this time
    */
   async getPreviousIndicatorValue(
     symbol: string,
     indicator: string,
-    timeframe: Timeframe
+    timeframe: Timeframe,
+    until?: number
   ): Promise<number | null> {
     try {
-      const candles = await this.fetchCandles(symbol, timeframe)
+      const candles = await this.fetchCandles(symbol, timeframe, until)
       
       if (!candles || candles.length < 2) {
         return null
@@ -217,11 +239,16 @@ export class StrategyRunner {
 
   /**
    * Evaluate a single condition
+   * @param symbol - Trading pair symbol
+   * @param condition - Condition to evaluate
+   * @param conditionIndex - Index of the condition
+   * @param until - Optional timestamp to filter candles before this time
    */
   async evaluateCondition(
     symbol: string,
     condition: any,
-    conditionIndex: number
+    conditionIndex: number,
+    until?: number
   ): Promise<ConditionEvaluation> {
     const result: ConditionEvaluation = {
       conditionIndex,
@@ -240,8 +267,8 @@ export class StrategyRunner {
           const timeframe = condition.timeframe1 as Timeframe
           const targetPercentage = Number(condition.value) || 0
 
-          const currentValue = await this.getIndicatorValue(symbol, indicator, timeframe)
-          const previousValue = await this.getPreviousIndicatorValue(symbol, indicator, timeframe)
+          const currentValue = await this.getIndicatorValue(symbol, indicator, timeframe, until)
+          const previousValue = await this.getPreviousIndicatorValue(symbol, indicator, timeframe, until)
 
           result.currentValue = currentValue
           result.previousValue = previousValue
@@ -264,7 +291,7 @@ export class StrategyRunner {
           const timeframe1 = condition.timeframe1 as Timeframe
           const indicator2 = condition.indicator2 as string
 
-          const value1 = await this.getIndicatorValue(symbol, indicator1, timeframe1)
+          const value1 = await this.getIndicatorValue(symbol, indicator1, timeframe1, until)
           
           // Handle "Value" indicator2 - use the value field directly
           let value2: number | null
@@ -272,7 +299,7 @@ export class StrategyRunner {
             value2 = condition.value !== undefined ? Number(condition.value) : null
           } else {
             const timeframe2 = condition.timeframe2 as Timeframe
-            value2 = await this.getIndicatorValue(symbol, indicator2, timeframe2)
+            value2 = await this.getIndicatorValue(symbol, indicator2, timeframe2, until)
           }
 
           result.currentValue = value1
@@ -294,8 +321,8 @@ export class StrategyRunner {
           const timeframe1 = condition.timeframe1 as Timeframe
           const indicator2 = condition.indicator2 as string
 
-          const currentValue1 = await this.getIndicatorValue(symbol, indicator1, timeframe1)
-          const previousValue1 = await this.getPreviousIndicatorValue(symbol, indicator1, timeframe1)
+          const currentValue1 = await this.getIndicatorValue(symbol, indicator1, timeframe1, until)
+          const previousValue1 = await this.getPreviousIndicatorValue(symbol, indicator1, timeframe1, until)
           
           // Handle "Value" indicator2 - use the value field directly (static value, no previous)
           let currentValue2: number | null
@@ -306,8 +333,8 @@ export class StrategyRunner {
             previousValue2 = staticValue // Static value doesn't change
           } else {
             const timeframe2 = condition.timeframe2 as Timeframe
-            currentValue2 = await this.getIndicatorValue(symbol, indicator2, timeframe2)
-            previousValue2 = await this.getPreviousIndicatorValue(symbol, indicator2, timeframe2)
+            currentValue2 = await this.getIndicatorValue(symbol, indicator2, timeframe2, until)
+            previousValue2 = await this.getPreviousIndicatorValue(symbol, indicator2, timeframe2, until)
           }
 
           result.currentValue = currentValue1
@@ -343,16 +370,21 @@ export class StrategyRunner {
 
   /**
    * Evaluate a single rule (all conditions must be met)
+   * @param symbol - Trading pair symbol
+   * @param rule - Rule to evaluate
+   * @param ruleIndex - Index of the rule
+   * @param until - Optional timestamp to filter candles before this time
    */
   async evaluateRule(
     symbol: string,
     rule: { name: string; conditions: any[]; actions: any[] },
-    ruleIndex: number
+    ruleIndex: number,
+    until?: number
   ): Promise<RuleEvaluation> {
     const conditionResults: ConditionEvaluation[] = []
 
     for (let i = 0; i < rule.conditions.length; i++) {
-      const conditionResult = await this.evaluateCondition(symbol, rule.conditions[i], i)
+      const conditionResult = await this.evaluateCondition(symbol, rule.conditions[i], i, until)
       conditionResults.push(conditionResult)
     }
 
@@ -370,10 +402,14 @@ export class StrategyRunner {
 
   /**
    * Evaluate a complete strategy for a given symbol
+   * @param strategy - Strategy to evaluate
+   * @param symbol - Trading pair symbol
+   * @param until - Optional timestamp to filter candles before this time
    */
   async evaluateStrategy(
     strategy: SavedStrategy,
-    symbol: string
+    symbol: string,
+    until?: number
   ): Promise<StrategyEvaluation> {
     // Clear cache before evaluation to get fresh data
     this.clearCache()
@@ -381,17 +417,16 @@ export class StrategyRunner {
     const ruleEvaluations: RuleEvaluation[] = []
 
     for (let i = 0; i < strategy.rules.length; i++) {
-      const ruleResult = await this.evaluateRule(symbol, strategy.rules[i], i)
+      const ruleResult = await this.evaluateRule(symbol, strategy.rules[i], i, until)
       ruleEvaluations.push(ruleResult)
     }
 
     const triggeredRules = ruleEvaluations.filter((r) => r.allConditionsMet)
 
     return {
-      strategyId: strategy.strategyId,
       strategyName: strategy.strategyName,
       symbol,
-      evaluatedAt: new Date(),
+      evaluatedAt: until ? new Date(until) : new Date(),
       rules: ruleEvaluations,
       triggeredRules,
     }
@@ -406,9 +441,7 @@ export class StrategyRunner {
     const results: StrategyEvaluation[] = []
 
     for (const symbol of strategy.symbols) {
-      // Convert symbol format from "BTC/USD" to "BTCUSD" for Kraken API
-      const krakenSymbol = symbol.replace("/", "")
-      const result = await this.evaluateStrategy(strategy, krakenSymbol)
+      const result = await this.evaluateStrategy(strategy, symbol)
       results.push(result)
     }
 
@@ -416,35 +449,54 @@ export class StrategyRunner {
   }
 
   /**
-   * Get a summary of the evaluation results
+   * Analyze a strategy by running multiple historical evaluations
+   * @param strategy - Strategy to analyze
+   * @param testCycles - Number of evaluation cycles to run
+   * @param symbol - Trading pair symbol
+   * @returns Array of strategy evaluations at different points in time
    */
-  getEvaluationSummary(evaluation: StrategyEvaluation): {
-    totalRules: number
-    triggeredRules: number
-    totalConditions: number
-    metConditions: number
-    pendingActions: any[]
-  } {
-    let totalConditions = 0
-    let metConditions = 0
-    const pendingActions: any[] = []
+  async analyzeStrategy(
+    strategy: SavedStrategy,
+    testCycles: number,
+    symbol: string
+  ): Promise<StrategyEvaluation[]> {
+    // Get interval from strategy or default to 15 minutes
+    const intervalMinutes = strategy.executionOptions?.runIntervalMinutes ?? 15
+    const intervalMs = intervalMinutes * 60 * 1000
 
-    for (const rule of evaluation.rules) {
-      totalConditions += rule.conditions.length
-      metConditions += rule.conditions.filter((c) => c.result).length
+    // Calculate starting time: now - (cycles * intervalMinutes)
+    const now = Date.now()
+    const startTime = now - (testCycles * intervalMs)
 
-      if (rule.allConditionsMet) {
-        pendingActions.push(...rule.actions)
+    const results: StrategyEvaluation[] = []
+
+    const lastRuleTriggerTimes: Map<number, number> = new Map()
+
+    // Run evaluations for each cycle
+    for (let i = 0; i < testCycles; i++) {
+      const until = startTime + (i * intervalMs)
+      const result = await this.evaluateStrategy(strategy, symbol, until);
+
+      // if intervalBetweenExecutionsMinutes is set, skip evaluations for rules that were recently triggered
+      if (strategy.executionOptions?.intervalBetweenExecutionsMinutes) {
+        const intervalBetweenExecutionsMs = strategy.executionOptions.intervalBetweenExecutionsMinutes * 60 * 1000
+
+        // Skip evaluations for rules that were recently triggered
+        result.triggeredRules = result.triggeredRules.filter((ruleEval) => {
+          const lastTriggerTime = lastRuleTriggerTimes.get(ruleEval.ruleIndex);
+          return !lastTriggerTime || (until - lastTriggerTime) >= intervalBetweenExecutionsMs;
+        });
       }
+
+      // Update last trigger times for rules
+      result.triggeredRules.forEach((ruleEval) => {
+        lastRuleTriggerTimes.set(ruleEval.ruleIndex, until)
+      });
+
+      results.push(result)
     }
 
-    return {
-      totalRules: evaluation.rules.length,
-      triggeredRules: evaluation.triggeredRules.length,
-      totalConditions,
-      metConditions,
-      pendingActions,
-    }
+    return results
   }
 }
 

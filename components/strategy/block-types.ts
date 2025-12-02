@@ -64,6 +64,12 @@ export interface StrategyTemplate {
   strategyId?: string
   strategyName: string
   symbols: string[]
+  executionOptions?: {
+    runIntervalMinutes?: number
+    maximumExecuteCount?: number
+    intervalBetweenExecutionsMinutes?: number
+    maximumOpenPositions?: number
+  }
   rules: {
     name: string
     conditions: {
@@ -123,6 +129,19 @@ export const leverageOptions = [
   { label: "No", value: "1" },
   { label: "5x", value: "5" },
   { label: "10x", value: "10" },
+]
+
+export const runIntervalOptions = [
+  { label: "1 minute", value: 1 },
+  { label: "5 minutes", value: 5 },
+  { label: "15 minutes", value: 15 },
+  { label: "30 minutes", value: 30 },
+  { label: "1 hour", value: 60 },
+  { label: "6 hours", value: 360 },
+  { label: "12 hours", value: 720 },
+  { label: "1 day", value: 1440 },
+  { label: "1 week", value: 10080 },
+  { label: "1 month", value: 43200 },
 ]
 
 export const blockConfigs: Record<BlockType, BlockConfig> = {

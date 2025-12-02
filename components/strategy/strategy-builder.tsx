@@ -27,6 +27,7 @@ import {
   indicatorOptions as defaultIndicatorOptions,
   unitOptions as defaultUnitOptions,
   channelOptions as defaultChannelOptions,
+  runIntervalOptions,
   type BlockConfig,
   type BlockType,
   type BlockCategory,
@@ -36,7 +37,7 @@ import {
   PredefinedStrategyTemplate,
   STATIC_SYSTEM_PROMPT_V1,
 } from "./block-types"
-import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2 } from "lucide-react"
+import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2, Pencil } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { predefinedStrategies as defaultPredefinedStrategies } from "@/lib/predefined-strategies"
@@ -256,7 +257,8 @@ export function StrategyBuilder({
   const [strategyName, setStrategyName] = useState("New Strategy")
   const [selectedPairs, setSelectedPairs] = useState<string[]>(["BTC/USD"])
   const [ruleGroups, setRuleGroups] = useState<RuleGroup[]>([
-    { id: "rule-1", name: "Rule 1", conditionItems: [], actionItems: [] },
+    { id: "rule-1", name: "Buy Rule", conditionItems: [], actionItems: [] },
+    { id: "rule-2", name: "Sell Rule", conditionItems: [], actionItems: [] },
   ])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeConfig, setActiveConfig] = useState<BlockConfig | null>(null)
@@ -282,12 +284,41 @@ export function StrategyBuilder({
   const [aiIsLoading, setAiIsLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
 
+  // Execution Options state
+  const [runIntervalMinutes, setRunIntervalMinutes] = useState<number>(60) // Default: 1 hour
+  const [maximumExecuteCount, setMaximumExecuteCount] = useState<number>(10)
+  const [intervalBetweenExecutionsMinutes, setIntervalBetweenExecutionsMinutes] = useState<number>(60) // Default: 1 hour
+  const [maximumOpenPositions, setMaximumOpenPositions] = useState<number>(1)
+  const [isEditingDetails, setIsEditingDetails] = useState(false)
+
+  // Helper to get interval label from minutes value
+  const getIntervalLabel = (minutes: number) => {
+    const option = runIntervalOptions.find(o => o.value === minutes)
+    return option?.label || `${minutes} minutes`
+  }
+
   const loadStrategyFromJson = useCallback(
     (parsed: StrategyTemplate) => {
       const { ruleGroups: newRuleGroups, strategyName: name, symbols } = parseStrategyToRuleGroups(parsed, customBlockConfigs)
       setStrategyName(name)
       setSelectedPairs(symbols)
       setRuleGroups(newRuleGroups)
+      
+      // Load execution options if present
+      if (parsed.executionOptions) {
+        if (parsed.executionOptions.runIntervalMinutes !== undefined) {
+          setRunIntervalMinutes(parsed.executionOptions.runIntervalMinutes)
+        }
+        if (parsed.executionOptions.maximumExecuteCount !== undefined) {
+          setMaximumExecuteCount(parsed.executionOptions.maximumExecuteCount)
+        }
+        if (parsed.executionOptions.intervalBetweenExecutionsMinutes !== undefined) {
+          setIntervalBetweenExecutionsMinutes(parsed.executionOptions.intervalBetweenExecutionsMinutes)
+        }
+        if (parsed.executionOptions.maximumOpenPositions !== undefined) {
+          setMaximumOpenPositions(parsed.executionOptions.maximumOpenPositions)
+        }
+      }
     },
     [customBlockConfigs],
   )
@@ -457,7 +488,10 @@ export function StrategyBuilder({
   }
 
   const handleReset = () => {
-    setRuleGroups([{ id: "rule-1", name: "Rule 1", conditionItems: [], actionItems: [] }])
+    setRuleGroups([ 
+      { id: "rule-1", name: "Buy Rule", conditionItems: [], actionItems: [] },
+      { id: "rule-2", name: "Sell Rule", conditionItems: [], actionItems: [] },
+    ])
     setStrategyName("New Strategy")
     setSelectedPairs(["BTC/USD"])
   }
@@ -625,6 +659,12 @@ export function StrategyBuilder({
       strategyId: crypto.randomUUID(),
       strategyName: strategyName.trim(),
       symbols: selectedPairs,
+      executionOptions: {
+        runIntervalMinutes,
+        maximumExecuteCount,
+        intervalBetweenExecutionsMinutes,
+        maximumOpenPositions,
+      },
       rules,
     }
 
@@ -738,245 +778,275 @@ export function StrategyBuilder({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid gap-6 lg:grid-cols-[300px_1fr] max-w-screen-2xl mx-auto">
-        <div className="space-y-6 hidden lg:block">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Strategy Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="strategy-name">Strategy Name</Label>
-                <Input
-                  id="strategy-name"
-                  value={strategyName}
-                  onChange={(e) => setStrategyName(e.target.value)}
-                  placeholder="Enter strategy name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Trading Pairs</Label>
-                {selectedPairs.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {selectedPairs.map((pair) => (
-                      <div
-                        key={pair}
-                        className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
-                      >
-                        <span>{pair}</span>
-                        <button
-                          onClick={() => handleRemovePair(pair)}
-                          className="hover:bg-primary/20 rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <Popover open={pairPopoverOpen} onOpenChange={setPairPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 w-full bg-transparent">
-                      <Plus className="h-4 w-4" />
-                      Add Trading Pair
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-2" align="start">
-                    <div className="flex flex-col gap-1 max-h-60 overflow-auto">
-                      {tradingPairs
-                        .filter((pair) => !selectedPairs.includes(pair))
-                        .map((pair) => (
-                          <button
-                            key={pair}
-                            onClick={() => handleAddPair(pair)}
-                            className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
-                          >
-                            {pair}
-                          </button>
-                        ))}
-                      {tradingPairs.filter((pair) => !selectedPairs.includes(pair)).length === 0 && (
-                        <p className="text-sm text-muted-foreground px-3 py-2">All pairs selected</p>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Building Blocks</CardTitle>
-              <div className="flex gap-1 mt-2">
-                <Button
-                  variant={blockCategory === "condition" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBlockCategory("condition")}
-                  className={`flex-1 ${blockCategory === "condition" ? "" : "bg-transparent"}`}
-                >
-                  Conditions
-                </Button>
-                <Button
-                  variant={blockCategory === "action" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBlockCategory("action")}
-                  className={`flex-1 ${blockCategory === "action" ? "" : "bg-transparent"}`}
-                >
-                  Actions
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {displayedBlocks.map((blockType) => (
-                <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={customBlockConfigs[blockType]} themeOverride={themeOverride} />
-              ))}
-            </CardContent>
-          </Card>
+      <div className="flex flex-col gap-4 w-full">
+        <div className="flex flex-wrap lg:justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={handleReset} className="gap-2 bg-transparent">
+            <RotateCcw className="h-4 w-4" />
+            Reset
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTemplatesDialogOpen(true)}
+            className="gap-2 bg-transparent"
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Templates
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportDialogOpen(true)}
+            className="gap-2 bg-transparent"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          {supportedAIModels.length > 0 && callAIFunction && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAiDialogOpen(true)}
+              className="gap-2 bg-transparent"
+            >
+              <Sparkles className="h-4 w-4" />
+              AI Builder
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handlePreview} className="gap-2 bg-transparent">
+            <Eye className="h-4 w-4" />
+            Preview
+          </Button>
+          <Button size="sm" onClick={handleDeploy} className="gap-2">
+            <Play className="h-4 w-4" />
+            Deploy
+          </Button>
         </div>
-
-        <div className="lg:hidden">
-          <Card className="mb-6">
-            <CardHeader>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Strategy Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="strategy-name-mobile">Strategy Name</Label>
-                <Input
-                  id="strategy-name-mobile"
-                  value={strategyName}
-                  onChange={(e) => setStrategyName(e.target.value)}
-                  placeholder="Enter strategy name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Trading Pairs</Label>
-                {selectedPairs.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {selectedPairs.map((pair) => (
-                      <div
-                        key={pair}
-                        className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditingDetails(!isEditingDetails)}
+                className="gap-1.5 h-7 text-xs"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                {isEditingDetails ? "Done" : "Edit"}
+              </Button>
+            </div>
+            {!isEditingDetails && (
+              <p className="text-sm text-muted-foreground mt-2">
+                <span className="font-medium text-foreground">{strategyName || "Unnamed Strategy"}</span>
+                {" trades on "}
+                <span className="font-medium text-foreground">
+                  {selectedPairs.length > 0 ? selectedPairs.join(", ") : "no pairs selected"}
+                </span>
+                {". Checked every "}
+                <span className="font-medium text-foreground">{getIntervalLabel(runIntervalMinutes)}</span>
+                {", up to "}
+                <span className="font-medium text-foreground">{maximumExecuteCount} executions</span>
+                {" with "}
+                <span className="font-medium text-foreground">{getIntervalLabel(intervalBetweenExecutionsMinutes)}</span>
+                {" between each. Max "}
+                <span className="font-medium text-foreground">{maximumOpenPositions} open position{maximumOpenPositions !== 1 ? "s" : ""}</span>
+                {"."}
+              </p>
+            )}
+          </CardHeader>
+          {isEditingDetails && (
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="strategy-name">Strategy Name</Label>
+              <Input
+                id="strategy-name"
+                value={strategyName}
+                onChange={(e) => setStrategyName(e.target.value)}
+                placeholder="Enter strategy name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Trading Pairs</Label>
+              {selectedPairs.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedPairs.map((pair) => (
+                    <div
+                      key={pair}
+                      className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
+                    >
+                      <span>{pair}</span>
+                      <button
+                        onClick={() => handleRemovePair(pair)}
+                        className="hover:bg-primary/20 rounded-full p-0.5"
                       >
-                        <span>{pair}</span>
-                        <button
-                          onClick={() => handleRemovePair(pair)}
-                          className="hover:bg-primary/20 rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 w-full bg-transparent">
-                      <Plus className="h-4 w-4" />
-                      Add Trading Pair
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-2" align="start">
-                    <div className="flex flex-col gap-1 max-h-60 overflow-auto">
-                      {tradingPairs
-                        .filter((pair) => !selectedPairs.includes(pair))
-                        .map((pair) => (
-                          <button
-                            key={pair}
-                            onClick={() => handleAddPair(pair)}
-                            className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
-                          >
-                            {pair}
-                          </button>
-                        ))}
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  ))}
+                </div>
+              )}
+              <Popover open={pairPopoverOpen} onOpenChange={setPairPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 w-full bg-transparent">
+                    <Plus className="h-4 w-4" />
+                    Add Trading Pair
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="start">
+                  <div className="flex flex-col gap-1 max-h-60 overflow-auto">
+                    {tradingPairs
+                      .filter((pair) => !selectedPairs.includes(pair))
+                      .map((pair) => (
+                        <button
+                          key={pair}
+                          onClick={() => handleAddPair(pair)}
+                          className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                        >
+                          {pair}
+                        </button>
+                      ))}
+                    {tradingPairs.filter((pair) => !selectedPairs.includes(pair)).length === 0 && (
+                      <p className="text-sm text-muted-foreground px-3 py-2">All pairs selected</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
 
-        <div className="space-y-6">
-          <div className="flex flex-col gap-3 md:flex-row items-center justify-between">
-            <h2 className="text-xl font-semibold text-foreground">Strategy Rules</h2>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleReset} className="gap-2 bg-transparent">
-                <RotateCcw className="h-4 w-4" />
-                Reset
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setTemplatesDialogOpen(true)}
-                className="gap-2 bg-transparent"
-              >
-                <LayoutTemplate className="h-4 w-4" />
-                Templates
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setImportDialogOpen(true)}
-                className="gap-2 bg-transparent"
-              >
-                <Upload className="h-4 w-4" />
-                Import
-              </Button>
-              {supportedAIModels.length > 0 && callAIFunction && (
+            {/* Execution Options */}
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-sm font-medium mb-3 block">Execution Options</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="run-interval" className="text-xs text-muted-foreground">Check every</Label>
+                  <Select
+                    value={String(runIntervalMinutes)}
+                    onValueChange={(value) => setRunIntervalMinutes(Number(value))}
+                  >
+                    <SelectTrigger id="run-interval" className="h-8 text-xs w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {runIntervalOptions.map((option) => (
+                        <SelectItem key={option.value} value={String(option.value)}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="max-executions" className="text-xs text-muted-foreground">Maximum Executions</Label>
+                  <Input
+                    id="max-executions"
+                    type="number"
+                    min={1}
+                    value={maximumExecuteCount}
+                    onChange={(e) => setMaximumExecuteCount(Number(e.target.value) || 1)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="interval-between" className="text-xs text-muted-foreground">Wait Between Executions</Label>
+                  <Select
+                    value={String(intervalBetweenExecutionsMinutes)}
+                    onValueChange={(value) => setIntervalBetweenExecutionsMinutes(Number(value))}
+                  >
+                    <SelectTrigger id="interval-between" className="h-8 text-xs w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {runIntervalOptions.map((option) => (
+                        <SelectItem key={option.value} value={String(option.value)}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="max-positions" className="text-xs text-muted-foreground">Max Open Positions</Label>
+                  <Input
+                    id="max-positions"
+                    type="number"
+                    min={1}
+                    value={maximumOpenPositions}
+                    onChange={(e) => setMaximumOpenPositions(Number(e.target.value) || 1)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          )}
+        </Card>
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr] max-w-screen-2xl">
+          <div className="space-y-6 hidden lg:block">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Building Blocks</CardTitle>
+                <div className="flex gap-1 mt-2">
+                  <Button
+                    variant={blockCategory === "condition" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBlockCategory("condition")}
+                    className={`flex-1 ${blockCategory === "condition" ? "" : "bg-transparent"}`}
+                  >
+                    Conditions
+                  </Button>
+                  <Button
+                    variant={blockCategory === "action" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBlockCategory("action")}
+                    className={`flex-1 ${blockCategory === "action" ? "" : "bg-transparent"}`}
+                  >
+                    Actions
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {displayedBlocks.map((blockType) => (
+                  <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={customBlockConfigs[blockType]} themeOverride={themeOverride} />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-foreground">Rules</h3>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setAiDialogOpen(true)}
-                  className="gap-2 bg-transparent"
+                  onClick={addRuleGroup}
+                  className="gap-2 border-primary text-primary hover:bg-primary/10 bg-transparent"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  AI Builder
+                  <Plus className="h-4 w-4" />
+                  Add Rule
                 </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={handlePreview} className="gap-2 bg-transparent">
-                <Eye className="h-4 w-4" />
-                Preview
-              </Button>
-              <Button size="sm" onClick={handleDeploy} className="gap-2">
-                <Play className="h-4 w-4" />
-                Deploy
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-foreground">Rules</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addRuleGroup}
-                className="gap-2 border-primary text-primary hover:bg-primary/10 bg-transparent"
-              >
-                <Plus className="h-4 w-4" />
-                Add Rule
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {ruleGroups.map((group) => (
-                <RuleDropZone
-                  key={group.id}
-                  id={group.id}
-                  name={group.name}
-                  onNameChange={(newName) => handleRuleNameChange(group.id, newName)}
-                  conditionItems={group.conditionItems}
-                  actionItems={group.actionItems}
-                  onRemoveBlock={(itemId, category) => handleRemoveBlock(group.id, itemId, category)}
-                  onValueChange={(itemId, name, value, category) =>
-                    handleValueChange(group.id, itemId, name, value, category)
-                  }
-                  onDelete={() => removeRuleGroup(group.id)}
-                  canDelete={ruleGroups.length > 1}
-                  onMobileDropZoneClick={handleMobileDropZoneClick}
-                  themeOverride={themeOverride}
-                />
-              ))}
+              </div>
+              <div className="space-y-4">
+                {ruleGroups.map((group) => (
+                  <RuleDropZone
+                    key={group.id}
+                    id={group.id}
+                    name={group.name}
+                    onNameChange={(newName) => handleRuleNameChange(group.id, newName)}
+                    conditionItems={group.conditionItems}
+                    actionItems={group.actionItems}
+                    onRemoveBlock={(itemId, category) => handleRemoveBlock(group.id, itemId, category)}
+                    onValueChange={(itemId, name, value, category) =>
+                      handleValueChange(group.id, itemId, name, value, category)
+                    }
+                    onDelete={() => removeRuleGroup(group.id)}
+                    canDelete={ruleGroups.length > 1}
+                    onMobileDropZoneClick={handleMobileDropZoneClick}
+                    themeOverride={themeOverride}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -10,9 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Settings, Plus, X } from "lucide-react"
+import { Settings, Plus, X, BarChart3, AlertCircle, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { agentService, supportedModels } from "../../lib/agent-service"
+import { tradingPairs } from "@/components/strategy/block-types"
+import { strategyRunner } from "../../lib/strategy-runner"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -78,8 +81,23 @@ export function StrategyPageClient({
   const [newIndicatorName, setNewIndicatorName] = useState("")
   const [newIndicatorCategory, setNewIndicatorCategory] = useState("price")
 
+  // Strategy Analytics state
+  const [deployedStrategy, setDeployedStrategy] = useState<SavedStrategy | null>(null)
+  const [selectedAnalyticsPair, setSelectedAnalyticsPair] = useState<string>("")
+  const [analysisResult, setAnalysisResult] = useState<{
+    totalExecutions: number
+    ruleExecutions: { ruleName: string; triggeredCount: number }[]
+    triggeredEvents: { ruleName: string; timestamp: Date }[]
+  } | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+
   const handleSave = useCallback((strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => {
-    saveStrategyToStorage(strategy)
+    const savedStrategy = saveStrategyToStorage(strategy)
+    setDeployedStrategy(savedStrategy)
+    // Set default analytics pair to first trading pair
+    if (savedStrategy.symbols.length > 0) {
+      setSelectedAnalyticsPair(savedStrategy.symbols[0])
+    }
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI
@@ -135,6 +153,57 @@ export function StrategyPageClient({
 
   const resetIndicatorOptions = () => {
     setIndicatorOptions(defaultIndicatorOptions)
+  }
+
+  // Analytics handler
+  const handleAnalyze = async () => {
+    if (!deployedStrategy || !selectedAnalyticsPair) return
+    
+    setIsAnalyzing(true)
+    setAnalysisResult(null)
+    
+    try {
+      const response = await strategyRunner.analyzeStrategy(deployedStrategy, 50, selectedAnalyticsPair)
+      console.log("Analysis Result:", response)
+      
+      // Calculate summary: triggered count per rule
+      const ruleTriggeredCounts: Record<string, number> = {}
+      
+      // Initialize counts for all rules
+      for (const rule of deployedStrategy.rules) {
+        ruleTriggeredCounts[rule.name] = 0
+      }
+      
+      // Count how many times each rule was triggered across all evaluations
+      // Also collect triggered events with timestamps
+      const triggeredEvents: { ruleName: string; timestamp: Date }[] = []
+      
+      for (const evaluation of response) {
+        for (const triggeredRule of evaluation.triggeredRules) {
+          ruleTriggeredCounts[triggeredRule.ruleName] = (ruleTriggeredCounts[triggeredRule.ruleName] || 0) + 1
+          triggeredEvents.push({
+            ruleName: triggeredRule.ruleName,
+            timestamp: evaluation.evaluatedAt,
+          })
+        }
+      }
+      
+      // Convert to array format
+      const ruleExecutions = Object.entries(ruleTriggeredCounts).map(([ruleName, triggeredCount]) => ({
+        ruleName,
+        triggeredCount,
+      }))
+      
+      setAnalysisResult({
+        totalExecutions: response.length,
+        ruleExecutions,
+        triggeredEvents,
+      })
+    } catch (error) {
+      console.error("Analysis failed:", error)
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   return (
@@ -260,6 +329,7 @@ export function StrategyPageClient({
         </Dialog>
       </div>
 
+      <div className="flex gap-4 w-full">
       <StrategyBuilder
         key={builderKey}
         strategyId={strategyId}
@@ -272,6 +342,104 @@ export function StrategyPageClient({
         supportedAIModels={supportedModels}
         callAIFunction={handleCallAI}
       />
+      
+      {/* Analytics Panel */}
+      <div className="w-full max-w-[320px] hidden lg:block">
+        <Card className="sticky top-4">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Analyze Strategy
+            </CardTitle>
+            {deployedStrategy ? ( <CardDescription> {deployedStrategy.strategyName} </CardDescription> ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!deployedStrategy ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <AlertCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  Deploy your strategy to run analytics.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Your strategy will be analyzed on a time series to test its performance.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="analytics-pair" className="text-sm font-medium">Trading Pair</Label>
+                  <Select 
+                    value={selectedAnalyticsPair} 
+                    onValueChange={setSelectedAnalyticsPair}
+                  >
+                    <SelectTrigger id="analytics-pair" className="w-full">
+                      <SelectValue placeholder="Select a pair" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deployedStrategy.symbols.map((pair) => (
+                        <SelectItem key={pair} value={pair}>
+                          {pair}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button 
+                  onClick={handleAnalyze}
+                  disabled={!selectedAnalyticsPair || isAnalyzing}
+                  className="w-full gap-2"
+                >
+                  <Play className="h-4 w-4" />
+                  {isAnalyzing ? "Analyzing..." : "Analyze"}
+                </Button>
+
+                {/* Analysis Results */}
+                {analysisResult && (
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="text-sm font-medium">Results Summary</div>
+                    
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Total Executions</span>
+                      <Badge variant="secondary">{analysisResult.totalExecutions}</Badge>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">Rules Triggered</div>
+                      {analysisResult.ruleExecutions.map((rule) => (
+                        <div key={rule.ruleName} className="flex justify-between items-center text-sm">
+                          <span className="truncate pr-2">{rule.ruleName}</span>
+                          <Badge variant={rule.triggeredCount > 0 ? "default" : "outline"}>
+                            {rule.triggeredCount}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Triggered Events Timeline */}
+                    {analysisResult.triggeredEvents.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <div className="text-xs text-muted-foreground">Event Timeline</div>
+                        <div className="overflow-y-auto space-y-2">
+                          {analysisResult.triggeredEvents.map((event, index) => (
+                            <div key={index} className="flex justify-between items-center text-xs py-1 px-2 bg-muted/50 rounded">
+                              <span className="truncate pr-2 font-medium">{event.ruleName}</span>
+                              <span className="text-muted-foreground whitespace-nowrap">
+                                {new Date(event.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      </div>
     </div>
   )
 }

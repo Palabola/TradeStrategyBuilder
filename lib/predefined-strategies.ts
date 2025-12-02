@@ -13,6 +13,12 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
       strategyId: "0391b0b0-01d8-4843-960a-e045052d7096",
       strategyName: "Buy when price drops",
       symbols: ["BTC/USD", "ETH/USD"],
+      executionOptions: {
+        runIntervalMinutes: 60,
+        maximumExecuteCount: 10,
+        intervalBetweenExecutionsMinutes: 360,
+        maximumOpenPositions: 1
+      },
       rules: [
         {
           name: "Buy the Dip",
@@ -51,6 +57,12 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
         "DOGE/USD",
         "SOL/USD"
       ],
+      executionOptions: {
+        runIntervalMinutes: 10,
+        maximumExecuteCount: 100,
+        intervalBetweenExecutionsMinutes: 1,
+        maximumOpenPositions: 10
+      },
       rules: [
         {
           name: "Buy High",
@@ -59,7 +71,7 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
               index: 0,
               type: "increased-by",
               indicator1: "Price",
-              timeframe1: "6h",
+              timeframe1: "4h",
               value: 5
             }
           ],

@@ -1,12 +1,6 @@
-export interface SavedStrategy {
-  strategyId: string
-  strategyName: string
-  symbols: string[]
-  rules: {
-    name: string
-    conditions: any[]
-    actions: any[]
-  }[]
+import { StrategyTemplate } from "../components/strategy/block-types"
+
+export interface SavedStrategy extends StrategyTemplate {
   createdAt: string
   updatedAt: string
 }

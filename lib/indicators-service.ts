@@ -188,7 +188,7 @@ export class IndicatorsService {
 
     // Create virtual candles for signal line calculation
     // We need to calculate EMA of the MACD line values
-    const macdCandles: Candlestick[] = [];
+    const macdCandles: Candle[] = [];
     for (let i = 0; i < candles.length; i++) {
       if (macdLine[i] !== null) {
         macdCandles.push({

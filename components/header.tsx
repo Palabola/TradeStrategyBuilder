@@ -59,47 +59,7 @@ export function Header() {
             >
               Strategy Runner
             </Link>
-            <Link
-              href="/history"
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              History
-            </Link>
           </nav>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {isConnected ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 bg-transparent">
-                  <div className="h-2 w-2 rounded-full bg-success" />
-                  <span className="font-mono text-sm">{walletAddress}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={copyAddress} className="gap-2">
-                  <Copy className="h-4 w-4" />
-                  Copy Address
-                </DropdownMenuItem>
-                <DropdownMenuItem className="gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  View on Explorer
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={disconnectWallet} className="gap-2 text-destructive">
-                  <LogOut className="h-4 w-4" />
-                  Disconnect
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button onClick={connectWallet} className="gap-2">
-              <Wallet className="h-4 w-4" />
-              Connect Wallet
-            </Button>
-          )}
         </div>
       </div>
     </header>
