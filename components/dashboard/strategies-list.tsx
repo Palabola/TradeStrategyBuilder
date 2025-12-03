@@ -79,9 +79,11 @@ export function StrategiesList() {
                   </div>
                 </div>
                 <div className="flex gap-2 ml-4">
-                  <Button size="icon" variant="outline" className="h-8 w-8 bg-transparent" title="Run strategy">
-                    <Play className="h-4 w-4" />
-                  </Button>
+                  <Link href={`/analyze?strategy=${strategy.strategyId}`}>
+                    <Button size="icon" variant="outline" className="h-8 w-8 bg-transparent" title="Run strategy">
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  </Link>
                   <Link href={`/strategy?strategyId=${strategy.strategyId}`}>
                     <Button size="icon" variant="outline" className="h-8 w-8 bg-transparent" title="Edit strategy">
                       <Edit className="h-4 w-4" />

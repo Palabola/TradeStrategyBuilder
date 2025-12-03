@@ -1,6 +1,4 @@
 import { Header } from "@/components/header"
-import { BalanceCard } from "@/components/dashboard/balance-card"
-import { RecentTrades } from "@/components/dashboard/recent-trades"
 import { StrategiesList } from "@/components/dashboard/strategies-list"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -34,14 +32,9 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
-
-          {/* Balance Cards */}
-          <BalanceCard />
-
           {/* Main Content */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6">
             <StrategiesList />
-            <RecentTrades />
           </div>
         </div>
       </main>
