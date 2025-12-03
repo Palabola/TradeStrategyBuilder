@@ -54,10 +54,10 @@ export function Header() {
               Strategy Builder
             </Link>
             <Link
-              href="/strategy-runner"
+              href="/analyze"
               className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
-              Strategy Runner
+              Strategy Analyzer
             </Link>
           </nav>
         </div>
