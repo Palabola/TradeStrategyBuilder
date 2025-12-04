@@ -445,11 +445,26 @@ export function AnalyzePageClient({ strategyId }: AnalyzePageClientProps) {
                                 <div className="mt-2 pt-2 border-t border-green-500/20">
                                   <div className="text-xs text-muted-foreground font-medium mb-1">Actions:</div>
                                   <div className="flex flex-wrap gap-1">
-                                    {rule.actions.map((action, actionIndex) => (
-                                      <Badge key={actionIndex} variant="secondary" className="text-xs">
-                                        {action.type}: {action.amount} {action.unit}
-                                      </Badge>
-                                    ))}
+                                    {rule.actions.map((action, actionIndex) => {
+                                      const actionType = action.action
+                                      const opts = action.options || {}
+                                      
+                                      let actionLabel: string = actionType
+                                      if (actionType === "OPEN" || actionType === "CLOSE") {
+                                        actionLabel = `${actionType} ${opts.side || ''} ${opts.amount || ''} ${opts.unit || ''}`
+                                        if (opts.leverage && opts.leverage !== "No") actionLabel += ` @ ${opts.leverage}`
+                                      } else if (actionType === "BUY" || actionType === "SELL") {
+                                        actionLabel = `${actionType} ${opts.amount || ''} ${opts.unit || ''}`
+                                      } else if (actionType === "NOTIFY") {
+                                        actionLabel = `NOTIFY via ${opts.channel || 'N/A'}`
+                                      }
+                                      
+                                      return (
+                                        <Badge key={actionIndex} variant="secondary" className="text-xs">
+                                          {actionLabel.trim()}
+                                        </Badge>
+                                      )
+                                    })}
                                   </div>
                                 </div>
                               )}

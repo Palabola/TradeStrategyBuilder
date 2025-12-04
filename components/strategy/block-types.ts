@@ -60,41 +60,47 @@ export interface PredefinedStrategyTemplate {
   strategy: StrategyTemplate
 }
 
+export interface ActionType {
+  index: number
+  action: "OPEN" | "CLOSE" |"BUY" | "SELL" | "NOTIFY"
+  options: {
+    side?: string
+    amount?: number
+    unit?: string
+    leverage?: string
+    stopLoss?: number
+    takeProfit?: number
+    channel?: string
+    message?: string
+  }
+}
+
+export interface ConditionType {
+  index: number
+  type: ConditionBlockType
+  indicator1?: string
+  timeframe1?: string
+  indicator2?: string
+  timeframe2?: string
+  value?: number
+}
+
+export interface ExecutionOptions {
+  runIntervalMinutes?: number
+  maximumExecuteCount?: number
+  intervalBetweenExecutionsMinutes?: number
+  maximumOpenPositions?: number
+}
+
 export interface StrategyTemplate {
   strategyId?: string
   strategyName: string
   symbols: string[]
-  executionOptions?: {
-    runIntervalMinutes?: number
-    maximumExecuteCount?: number
-    intervalBetweenExecutionsMinutes?: number
-    maximumOpenPositions?: number
-  }
+  executionOptions: ExecutionOptions
   rules: {
     name: string
-    conditions: {
-      index: number
-      type: ConditionBlockType
-      indicator1?: string
-      timeframe1?: string
-      indicator2?: string
-      timeframe2?: string
-      value?: number
-    }[]
-    actions: {
-      index: number
-      action: "OPEN" | "CLOSE" |"BUY" | "SELL" | "NOTIFY"
-      options: {
-        side?: string
-        amount?: number
-        unit?: string
-        leverage?: string
-        stopLoss?: number
-        takeProfit?: number
-        channel?: string
-        message?: string
-      }
-    }[]
+    conditions: ConditionType[]
+    actions: ActionType[]
   }[]
 }
 

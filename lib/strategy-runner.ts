@@ -1,4 +1,4 @@
-import { IndicatorOption } from "../components/strategy/block-types"
+import { ActionType, IndicatorOption } from "../components/strategy/block-types"
 import { candleService, type Candle } from "./candle-service"
 import { indicatorsService } from "./indicators-service"
 import type { SavedStrategy } from "./strategy-storage"
@@ -54,7 +54,7 @@ export interface RuleEvaluation {
   ruleName: string
   conditions: ConditionEvaluation[]
   allConditionsMet: boolean
-  actions: any[]
+  actions: ActionType[]
 }
 
 export interface StrategyEvaluation {
