@@ -40,7 +40,6 @@ import {
 import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2, Pencil } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { predefinedStrategies as defaultPredefinedStrategies } from "@/lib/predefined-strategies"
 import { getStrategyById as defaultGetStrategyById, type SavedStrategy } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
@@ -240,7 +239,7 @@ export function StrategyBuilder({
   indicatorOptions = defaultIndicatorOptions,
   unitOptions = defaultUnitOptions,
   channelOptions = defaultChannelOptions,
-  predefinedStrategies = defaultPredefinedStrategies,
+  predefinedStrategies = [],
   getStrategyById = defaultGetStrategyById,
   onSave,
   themeOverride,
@@ -329,6 +328,7 @@ export function StrategyBuilder({
       if (savedStrategy) {
         setCurrentStrategyId(strategyId)
         loadStrategyFromJson({
+          executionOptions: savedStrategy.executionOptions,
           strategyName: savedStrategy.strategyName,
           symbols: savedStrategy.symbols,
           rules: savedStrategy.rules,
@@ -784,15 +784,17 @@ export function StrategyBuilder({
             <RotateCcw className="h-4 w-4" />
             Reset
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTemplatesDialogOpen(true)}
-            className="gap-2 bg-transparent"
-          >
-            <LayoutTemplate className="h-4 w-4" />
-            Templates
-          </Button>
+          {predefinedStrategies.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTemplatesDialogOpen(true)}
+              className="gap-2 bg-transparent"
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              Templates
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1271,7 +1273,7 @@ export function StrategyBuilder({
         </div>
       )}
 
-      {templatesDialogOpen && (
+      {templatesDialogOpen && predefinedStrategies.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">

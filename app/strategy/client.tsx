@@ -14,8 +14,8 @@ import { Settings, Plus, X, BarChart3, AlertCircle, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { agentService, supportedModels } from "../../lib/agent-service"
-import { tradingPairs } from "@/components/strategy/block-types"
 import { strategyRunner } from "../../lib/strategy-runner"
+import { predefinedStrategies } from "../../lib/predefined-strategies"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -337,6 +337,7 @@ export function StrategyPageClient({
         indicatorOptions={indicatorOptions}
         unitOptions={unitOptions}
         channelOptions={channelOptions}
+        predefinedStrategies={predefinedStrategies}
         onSave={handleSave}
         themeOverride={computedTheme}
         supportedAIModels={supportedModels}
