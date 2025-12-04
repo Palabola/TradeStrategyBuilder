@@ -24,12 +24,6 @@ export default function DashboardPage() {
                   New Strategy
                 </Button>
               </Link>
-              <Link href="/strategy">
-                <Button className="gap-2">
-                  <Zap className="h-4 w-4" />
-                  Quick Trade
-                </Button>
-              </Link>
             </div>
           </div>
           {/* Main Content */}
