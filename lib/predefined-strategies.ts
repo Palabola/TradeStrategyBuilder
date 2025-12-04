@@ -58,9 +58,9 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
         "SOL/USD"
       ],
       executionOptions: {
-        runIntervalMinutes: 10,
+        runIntervalMinutes: 15,
         maximumExecuteCount: 100,
-        intervalBetweenExecutionsMinutes: 1,
+        intervalBetweenExecutionsMinutes: 15,
         maximumOpenPositions: 10
       },
       rules: [
