@@ -23,14 +23,11 @@ interface CanvasBlockProps {
 }
 
 function generateDynamicTitle(config: BlockConfig, values: Record<string, string | number>): React.ReactNode {
-  const indicator = values.indicator ?? config.parameters.find((p) => p.name === "indicator")?.default ?? ""
   const value = values.value ?? config.parameters.find((p) => p.name === "value")?.default ?? ""
-  const candles = values.candles ?? config.parameters.find((p) => p.name === "candles")?.default ?? ""
-
   const indicator1 = values.indicator1 ?? config.parameters.find((p) => p.name === "indicator1")?.default ?? ""
-  const candles1 = values.candles1 ?? config.parameters.find((p) => p.name === "candles1")?.default ?? ""
+  const timeframe1 = values.timeframe1 ?? config.parameters.find((p) => p.name === "timeframe1")?.default ?? ""
   const indicator2 = values.indicator2 ?? config.parameters.find((p) => p.name === "indicator2")?.default ?? ""
-  const candles2 = values.candles2 ?? config.parameters.find((p) => p.name === "candles2")?.default ?? ""
+  const timeframe2 = values.timeframe2 ?? config.parameters.find((p) => p.name === "timeframe2")?.default ?? ""
 
   const amount = values.amount ?? config.parameters.find((p) => p.name === "amount")?.default ?? ""
   const unit = values.unit ?? config.parameters.find((p) => p.name === "unit")?.default ?? ""
@@ -48,7 +45,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
       return (
         <>
           <span className="italic text-muted-foreground">
-            {indicator} ({candles})
+            {indicator1} ({timeframe1})
           </span>{" "}
           <span className="font-bold">Increased by</span> <span className="italic text-muted-foreground">{value}%</span>
         </>
@@ -57,7 +54,7 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
       return (
         <>
           <span className="italic text-muted-foreground">
-            {indicator} ({candles})
+            {indicator1} ({timeframe1})
           </span>{" "}
           <span className="font-bold">Decreased by</span> <span className="italic text-muted-foreground">{value}%</span>
         </>
@@ -66,11 +63,11 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
       return (
         <>
           <span className="italic text-muted-foreground">
-            {indicator1} ({candles1})
+            {indicator1} ({timeframe1})
           </span>{" "}
           <span className="font-bold">Greater than</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
+            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
           </span>
         </>
       )
@@ -78,11 +75,11 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
       return (
         <>
           <span className="italic text-muted-foreground">
-            {indicator1} ({candles1})
+            {indicator1} ({timeframe1})
           </span>{" "}
           <span className="font-bold">Lower than</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
+            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
           </span>
         </>
       )
@@ -90,11 +87,11 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
       return (
         <>
           <span className="italic text-muted-foreground">
-            {indicator1} ({candles1})
+            {indicator1} ({timeframe1})
           </span>{" "}
           <span className="font-bold">Crossing above</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
+            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
           </span>
         </>
       )
@@ -102,11 +99,11 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
       return (
         <>
           <span className="italic text-muted-foreground">
-            {indicator1} ({candles1})
+            {indicator1} ({timeframe1})
           </span>{" "}
           <span className="font-bold">Crossing below</span>{" "}
           <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${candles2})`}
+            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
           </span>
         </>
       )
@@ -289,21 +286,24 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
     const isIncreasedDecreased = config.type === "increased-by" || config.type === "decreased-by"
     const isGreaterLower = config.type === "greater-than" || config.type === "lower-than"
 
+    const indicator1Param = config.parameters.find((p) => p.name === "indicator1")
+    const timeframe1Param = config.parameters.find((p) => p.name === "timeframe1")
+    const indicator2Param = config.parameters.find((p) => p.name === "indicator2")
+    const timeframe2Param = config.parameters.find((p) => p.name === "timeframe2")
+    const valueParam = config.parameters.find((p) => p.name === "value")
+
     if (isIncreasedDecreased) {
-      const indicatorParam = config.parameters.find((p) => p.name === "indicator")
-      const candlesParam = config.parameters.find((p) => p.name === "candles")
-      const valueParam = config.parameters.find((p) => p.name === "value")
 
       return (
         <div className="space-y-4">
           <div className="flex items-end gap-3">
             <div className="space-y-2">
               <Label>Indicator</Label>
-              {indicatorParam && renderParameter(indicatorParam)}
+              {indicator1Param && renderParameter(indicator1Param)}
             </div>
             <div className="space-y-2">
               <Label>Candles</Label>
-              {candlesParam && renderParameter(candlesParam)}
+              {timeframe1Param && renderParameter(timeframe1Param)}
             </div>
           </div>
           <div className="space-y-2">
@@ -315,11 +315,6 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
     }
 
     if (isGreaterLower) {
-      const indicator1Param = config.parameters.find((p) => p.name === "indicator1")
-      const candles1Param = config.parameters.find((p) => p.name === "candles1")
-      const indicator2Param = config.parameters.find((p) => p.name === "indicator2")
-      const candles2Param = config.parameters.find((p) => p.name === "candles2")
-
       const conditionLabel = config.type === "greater-than" ? "Greater Than" : "Lower Than"
 
       // Get selected indicator1 value and find its category
@@ -345,7 +340,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
             </div>
             <div className="space-y-2">
               <Label>Candles</Label>
-              {candles1Param && renderParameter(candles1Param)}
+              {timeframe1Param && renderParameter(timeframe1Param)}
             </div>
           </div>
 
@@ -370,7 +365,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
             ) : (
               <div className="space-y-2">
                 <Label>Candles</Label>
-                {candles2Param && renderParameter(candles2Param)}
+                {timeframe2Param && renderParameter(timeframe2Param)}
               </div>
             )}
           </div>
@@ -472,9 +467,9 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
     if (!isCrossingBlock) return null
 
     const indicator1Param = config.parameters.find((p) => p.name === "indicator1")
-    const candles1Param = config.parameters.find((p) => p.name === "candles1")
+    const timeframe1Param = config.parameters.find((p) => p.name === "timeframe1")
     const indicator2Param = config.parameters.find((p) => p.name === "indicator2")
-    const candles2Param = config.parameters.find((p) => p.name === "candles2")
+    const timeframe2Param = config.parameters.find((p) => p.name === "timeframe2")
 
     const crossingLabel = config.type === "crossing-above" ? "Crossing Above" : "Crossing Below"
 
@@ -502,7 +497,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
           </div>
           <div className="space-y-2">
             <Label>Candles</Label>
-            {candles1Param && renderParameter(candles1Param)}
+            {timeframe1Param && renderParameter(timeframe1Param)}
           </div>
         </div>
 
@@ -528,7 +523,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
           ) : (
             <div className="space-y-2">
               <Label>Candles</Label>
-              {candles2Param && renderParameter(candles2Param)}
+              {timeframe2Param && renderParameter(timeframe2Param)}
             </div>
           )}
         </div>

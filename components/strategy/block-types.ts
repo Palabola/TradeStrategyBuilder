@@ -161,14 +161,14 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     category: "condition",
     parameters: [
       {
-        name: "indicator",
+        name: "indicator1",
         type: "select",
         label: "Indicator",
         indicatorOptions: indicatorOptions,
         default: "Price",
       },
       {
-        name: "candles",
+        name: "timeframe1",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -193,14 +193,14 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     category: "condition",
     parameters: [
       {
-        name: "indicator",
+        name: "indicator1",
         type: "select",
         label: "Indicator",
         indicatorOptions: indicatorOptions,
         default: "Price",
       },
       {
-        name: "candles",
+        name: "timeframe1",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -232,7 +232,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "EMA(20)",
       },
       {
-        name: "candles1",
+        name: "timeframe1",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -246,7 +246,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "MA",
       },
       {
-        name: "candles2",
+        name: "timeframe2",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -271,7 +271,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "EMA(20)",
       },
       {
-        name: "candles1",
+        name: "timeframe1",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -285,7 +285,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "MA",
       },
       {
-        name: "candles2",
+        name: "timeframe2",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -310,7 +310,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "Price",
       },
       {
-        name: "candles1",
+        name: "timeframe1",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -324,7 +324,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "MA",
       },
       {
-        name: "candles2",
+        name: "timeframe2",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -349,7 +349,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "Price",
       },
       {
-        name: "candles1",
+        name: "timeframe1",
         type: "select",
         label: "Candles",
         options: candleOptions,
@@ -363,7 +363,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         default: "MA",
       },
       {
-        name: "candles2",
+        name: "timeframe2",
         type: "select",
         label: "Candles",
         options: candleOptions,

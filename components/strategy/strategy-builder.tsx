@@ -94,12 +94,12 @@ function createCustomBlockConfigs(
       ...original,
       icon: original.icon, // Preserve the icon component reference
       parameters: original.parameters.map((param) => {
-        // Update candle options
-        if (param.name === "candles" || param.name === "candles1" || param.name === "candles2") {
+        // Update timeframe options
+        if (param.name === "timeframe1" || param.name === "timeframe2") {
           return { ...param, options: candleOpts }
         }
         // Update indicator options
-        if (param.name === "indicator" || param.name === "indicator1" || param.name === "indicator2") {
+        if (param.name === "indicator1" || param.name === "indicator2") {
           return { ...param, indicatorOptions: indicatorOpts }
         }
         // Update unit options
@@ -140,8 +140,8 @@ function parseStrategyToRuleGroups(
         const values: Record<string, string | number> = {}
 
         if (blockType === "increased-by" || blockType === "decreased-by") {
-          values.indicator = condition.indicator1 || ""
-          values.candles = condition.timeframe1 || ""
+          values.indicator1 = condition.indicator1 || ""
+          values.timeframe1 = condition.timeframe1 || ""
           values.value = condition.value || ""
         } else if (
           blockType === "crossing-above" ||
@@ -150,9 +150,9 @@ function parseStrategyToRuleGroups(
           blockType === "lower-than"
         ) {
           values.indicator1 = condition.indicator1 || ""
-          values.candles1 = condition.timeframe1 || ""
+          values.timeframe1 = condition.timeframe1 || ""
           values.indicator2 = condition.indicator2 || ""
-          values.candles2 = condition.timeframe2 || ""
+          values.timeframe2 = condition.timeframe2 || ""
           // Handle "Value" indicator2 case
           if (condition.indicator2 === "Value" && condition.value !== undefined) {
             values.value = condition.value
@@ -550,11 +550,11 @@ export function StrategyBuilder({
           item.config.type === "lower-than"
         ) {
           if (!item.values.indicator1) errors.push(`${blockLabel}: First indicator is required`)
-          if (!item.values.candles1) errors.push(`${blockLabel}: First candles timeframe is required`)
+          if (!item.values.timeframe1) errors.push(`${blockLabel}: First candles timeframe is required`)
           if (!item.values.indicator2) errors.push(`${blockLabel}: Second indicator is required`)
           
           condition.indicator1 = item.values.indicator1
-          condition.timeframe1 = item.values.candles1
+          condition.timeframe1 = item.values.timeframe1
           condition.indicator2 = item.values.indicator2
           
           // Handle special "Value" case for indicator2
@@ -563,16 +563,16 @@ export function StrategyBuilder({
               errors.push(`${blockLabel}: Value is required when using Value indicator`)
             condition.value = item.values.value
           } else {
-            if (!item.values.candles2) errors.push(`${blockLabel}: Second candles timeframe is required`)
-            condition.timeframe2 = item.values.candles2
+            if (!item.values.timeframe2) errors.push(`${blockLabel}: Second candles timeframe is required`)
+            condition.timeframe2 = item.values.timeframe2
           }
         } else if (item.config.type === "increased-by" || item.config.type === "decreased-by") {
-          if (!item.values.indicator) errors.push(`${blockLabel}: Indicator is required`)
-          if (!item.values.candles) errors.push(`${blockLabel}: Candles timeframe is required`)
+          if (!item.values.indicator1) errors.push(`${blockLabel}: Indicator is required`)
+          if (!item.values.timeframe1) errors.push(`${blockLabel}: Candles timeframe is required`)
           if (item.values.value === undefined || item.values.value === "")
             errors.push(`${blockLabel}: Percentage value is required`)
-          condition.indicator1 = item.values.indicator
-          condition.timeframe1 = item.values.candles
+          condition.indicator1 = item.values.indicator1
+          condition.timeframe1 = item.values.timeframe1
           condition.value = item.values.value
         }
         return condition
