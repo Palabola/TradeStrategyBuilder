@@ -1,6 +1,6 @@
 {
   "name": "@palabola86/trade-strategy-builder",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A visual trading strategy builder component for React/Next.js",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -14,7 +14,10 @@
     "./styles.css": "./dist/styles.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "STRATEGY_BUILDER_QUICK_REFERENCE.md",
+    "STRATEGY_BUILDER_SETUP.md",
+    "STRATEGY_BUILDER_SUMMARY.md"
   ],
   "scripts": {
     "build": "tsup",
@@ -60,7 +63,7 @@
     "dnd",
     "drag-and-drop"
   ],
-  "author": "Your Name",
+  "author": "Palabola86",
   "license": "MIT",
   "repository": {
     "type": "git",
