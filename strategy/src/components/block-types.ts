@@ -80,8 +80,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Increased By",
     description: "Trigger when indicator increases by value",
     icon: TrendingUp,
-    color: "text-info",
-    bgColor: "bg-info/10 border-info/30",
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10 border-blue-500/30",
     category: "condition",
     parameters: [
       {
@@ -112,8 +112,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Decreased By",
     description: "Trigger when indicator decreases by value",
     icon: TrendingDown,
-    color: "text-orange",
-    bgColor: "bg-destructive/10 border-destructive/30",
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10 border-orange-500/30",
     category: "condition",
     parameters: [
       {
@@ -144,8 +144,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Greater Than",
     description: "Trigger when indicator exceeds another indicator",
     icon: ChevronUp,
-    color: "text-primary",
-    bgColor: "bg-primary/10 border-primary/30",
+    color: "text-violet-500",
+    bgColor: "bg-violet-500/10 border-violet-500/30",
     category: "condition",
     parameters: [
       {
@@ -183,8 +183,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Lower Than",
     description: "Trigger when indicator falls below another indicator",
     icon: ChevronDown,
-    color: "text-pink",
-    bgColor: "bg-pink/10 border-pink/30",
+    color: "text-pink-500",
+    bgColor: "bg-pink-500/10 border-pink-500/30",
     category: "condition",
     parameters: [
       {
@@ -222,8 +222,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Crossing Above",
     description: "Trigger when indicator crosses above another indicator",
     icon: ArrowUpRight,
-    color: "text-cyan",
-    bgColor: "bg-cyan/10 border-cyan/30",
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-500/10 border-cyan-500/30",
     category: "condition",
     parameters: [
       {
@@ -261,8 +261,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Crossing Below",
     description: "Trigger when indicator crosses below another indicator",
     icon: ArrowDownRight,
-    color: "text-teal",
-    bgColor: "bg-teal/10 border-teal/30",
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10 border-teal-500/30",
     category: "condition",
     parameters: [
       {
@@ -300,8 +300,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Open Position",
     description: "Open a new trading position",
     icon: DollarSign,
-    color: "text-success",
-    bgColor: "bg-success/10 border-success/30",
+    color: "text-green-500",
+    bgColor: "bg-green-500/10 border-green-500/30",
     category: "action",
     parameters: [
       {
@@ -353,8 +353,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Close Positions",
     description: "Close all open positions",
     icon: LogOut,
-    color: "text-destructive",
-    bgColor: "bg-destructive/10 border-destructive/30",
+    color: "text-red-500",
+    bgColor: "bg-red-500/10 border-red-500/30",
     category: "action",
     parameters: [],
   },
@@ -363,8 +363,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Buy",
     description: "Execute a buy order",
     icon: ShoppingCart,
-    color: "text-success",
-    bgColor: "bg-success/10 border-success/30",
+    color: "text-green-500",
+    bgColor: "bg-green-500/10 border-green-500/30",
     category: "action",
     parameters: [
       {
@@ -388,8 +388,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Sell",
     description: "Execute a sell order",
     icon: Banknote,
-    color: "text-destructive",
-    bgColor: "bg-destructive/10 border-destructive/30",
+    color: "text-red-500",
+    bgColor: "bg-red-500/10 border-red-500/30",
     category: "action",
     parameters: [
       {
@@ -413,8 +413,8 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     label: "Notify Me",
     description: "Send a notification when conditions are met",
     icon: Bell,
-    color: "text-warning",
-    bgColor: "bg-warning/10 border-warning/30",
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10 border-amber-500/30",
     category: "action",
     parameters: [
       {

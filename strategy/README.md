@@ -67,7 +67,17 @@ export default function StrategyPage() {
 
 ### Tailwind CSS Configuration
 
-Add the package to your Tailwind content configuration:
+Add the package source to your `globals.css` (or `globals.scss`) file:
+
+```css
+/* globals.css */
+@import "tailwindcss";
+
+/* Add this line to include the package styles */
+@source "../node_modules/@palabola86/trade-strategy-builder/dist";
+```
+
+Alternatively, if you're using a `tailwind.config.ts` file, add the package to your content configuration:
 
 ```typescript
 // tailwind.config.ts

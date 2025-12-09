@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../node_modules/@palabola86/trade-strategy-builder/dist";
+
 @custom-variant dark (&:is(.dark *));
 
 /* Kraken-inspired light theme with purple accent */
