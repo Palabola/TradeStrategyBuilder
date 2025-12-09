@@ -339,7 +339,7 @@ const predefinedStrategies: PredefinedStrategyTemplate[] = [
                 side: "LONG",
                 amount: 100,
                 unit: "USD",
-                leverage: "No",
+                leverage: "1x",
               },
             },
           ],

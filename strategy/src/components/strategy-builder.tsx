@@ -31,6 +31,7 @@ import {
   type BlockConfig,
   type BlockCategory,
   STATIC_SYSTEM_PROMPT_V1,
+  leverageOptions,
 } from "./block-types"
 import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2, Pencil } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
@@ -174,7 +175,7 @@ function parseStrategyToRuleGroups(
             values.side = action.options.side || "LONG"
             values.amount = action.options.amount || ""
             values.unit = action.options.unit || "USD"
-            values.leverage = action.options.leverage || "No"
+            values.leverage = action.options.leverage || "1x"
             values.stopLoss = action.options.stopLoss ?? 0
             values.takeProfit = action.options.takeProfit ?? 0
           } else if (blockType === "close-position") {
@@ -1179,7 +1180,8 @@ export function StrategyBuilder({
                       tradingPairs,
                       indicatorOptions.map(option => option.name),
                       candleOptions,
-                      unitOptions
+                      unitOptions,
+                      leverageOptions.map(option => option.label),
                     )
                     const result = await callAIFunction(systemPrompt, [aiPrompt], selectedAIModel)
                     setAiGeneratedJson(result)

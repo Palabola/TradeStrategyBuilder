@@ -56,7 +56,7 @@ export const channelOptions = ["Telegram", "Notification", "Email"]
 export const sideOptions = ["LONG", "SHORT"]
 
 export const leverageOptions = [
-  { label: "No", value: "1" },
+  { label: "1x", value: "1" },
   { label: "5x", value: "5" },
   { label: "10x", value: "10" },
 ]
@@ -330,7 +330,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
         type: "select",
         label: "Leverage",
         options: leverageOptions.map(l => l.label),
-        default: "No",
+        default: "1x",
       },
       {
         name: "stopLoss",
@@ -453,6 +453,7 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
   usableIndicators: string[],
   candleLengths: string[],
   tradeUnits: string[],
+  leverageValues: string[],
 ) => {
   return `
   #### Persona and role:
@@ -467,6 +468,7 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
    - Usable Indicators: ${usableIndicators.join(", ")}. There is a Special indicator called "Value" which represents a numeric constant value, it can be used to compare an indicator to a constant value.
    - Candle Lengths: ${candleLengths.join(", ")}
    - Trade Units: ${tradeUnits.join(", ")}
+   - Leverage Values: ${leverageValues.join(", ")}
    - Execution Options: ${JSON.stringify(runIntervalOptions.map(o => o.value))}
    - Available trade rules: 
       1. Increased By: usage the indicator has increased by a certain percentage over a specified timeframe.
