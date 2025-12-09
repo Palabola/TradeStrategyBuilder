@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { saveStrategyToStorage } from "@/lib/strategy-storage"
+import { getStrategyById, saveStrategyToStorage } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -101,6 +101,11 @@ export function StrategyPageClient({
   // AI function wrapper - delegates to agentService.callAI
   const handleCallAI = useCallback(async (systemPrompt: string, userPrompts: string[], model: string): Promise<string> => {
     return await agentService.callAI(systemPrompt, userPrompts, model)
+  }, [])
+
+  const loadStrategyById = useCallback((id: string): StrategyTemplate | null => {
+    const strategy = getStrategyById(id)
+    return strategy
   }, [])
 
   // Compute the actual theme based on selection
@@ -340,6 +345,7 @@ export function StrategyPageClient({
         themeOverride={computedTheme}
         supportedAIModels={supportedModels}
         callAIFunction={handleCallAI}
+        getStrategyById={loadStrategyById}
       />
       
       {/* Analytics Panel */}
