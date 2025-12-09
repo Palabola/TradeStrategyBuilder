@@ -1,6 +1,3 @@
-import { supportedIndicators, supportedTimeframes } from './strategy-runner';
-import { tradingPairs, unitOptions } from '../components/strategy/block-types';
-
 /**
  * AI Strategy Builder Agent Service
  *

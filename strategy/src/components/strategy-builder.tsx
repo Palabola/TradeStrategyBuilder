@@ -11,11 +11,11 @@ import {
   useSensors,
 } from "@dnd-kit/core"
 import { arrayMove } from "@dnd-kit/sortable"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
+import { Textarea } from "./ui/textarea"
 import { DraggableBlock } from "./draggable-block"
 import { RuleDropZone } from "./rule-drop-zone"
 import {
@@ -29,19 +29,14 @@ import {
   channelOptions as defaultChannelOptions,
   runIntervalOptions,
   type BlockConfig,
-  type BlockType,
   type BlockCategory,
-  type IndicatorOption,
-  type CustomTheme,
-  StrategyTemplate,
-  PredefinedStrategyTemplate,
   STATIC_SYSTEM_PROMPT_V1,
 } from "./block-types"
 import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2, Pencil } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { getStrategyById as defaultGetStrategyById, type SavedStrategy } from "@/lib/strategy-storage"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
+import { BlockType, CustomTheme, IndicatorOption, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate } from "../types"
 
 interface CanvasItem {
   id: string
@@ -60,20 +55,6 @@ interface StrategyJsonResult {
   success: boolean
   data?: any
   errors?: string[]
-}
-
-interface StrategyBuilderProps {
-  strategyId?: string
-  candleOptions?: string[]
-  indicatorOptions?: IndicatorOption[]
-  unitOptions?: string[]
-  channelOptions?: string[]
-  predefinedStrategies?: PredefinedStrategyTemplate[]
-  getStrategyById?: (id: string) => SavedStrategy | null
-  onSave?: (strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => void
-  themeOverride?: CustomTheme
-  supportedAIModels?: string[]
-  callAIFunction?: ( systemPrompt: string, userPrompts: string[], model: string) => Promise<string>
 }
 
 /**
@@ -240,7 +221,7 @@ export function StrategyBuilder({
   unitOptions = defaultUnitOptions,
   channelOptions = defaultChannelOptions,
   predefinedStrategies = [],
-  getStrategyById = defaultGetStrategyById,
+  getStrategyById,
   onSave,
   themeOverride,
   supportedAIModels = ['grok'],
@@ -323,7 +304,7 @@ export function StrategyBuilder({
   )
 
   useEffect(() => {
-    if (strategyId) {
+    if (strategyId && getStrategyById) {
       const savedStrategy = getStrategyById(strategyId)
       if (savedStrategy) {
         setCurrentStrategyId(strategyId)

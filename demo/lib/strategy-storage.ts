@@ -1,13 +1,8 @@
-import { StrategyTemplate } from "../components/strategy/block-types"
-
-export interface SavedStrategy extends StrategyTemplate {
-  createdAt: string
-  updatedAt: string
-}
+import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 
 const STORAGE_KEY = "saved_trading_strategies"
 
-export function getSavedStrategies(): SavedStrategy[] {
+export function getSavedStrategies(): StrategyTemplate[] {
   if (typeof window === "undefined") return []
 
   try {
@@ -20,16 +15,14 @@ export function getSavedStrategies(): SavedStrategy[] {
   }
 }
 
-export function saveStrategyToStorage(strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">): SavedStrategy {
+export function saveStrategyToStorage(strategy: StrategyTemplate): StrategyTemplate {
   const strategies = getSavedStrategies()
   const now = new Date().toISOString()
 
   const existingIndex = strategies.findIndex((s) => s.strategyId === strategy.strategyId)
 
-  const savedStrategy: SavedStrategy = {
+  const savedStrategy: StrategyTemplate = {
     ...strategy,
-    createdAt: existingIndex >= 0 ? strategies[existingIndex].createdAt : now,
-    updatedAt: now,
   }
 
   if (existingIndex >= 0) {
@@ -56,7 +49,7 @@ export function removeStrategyFromStorage(strategyId: string): boolean {
   return true
 }
 
-export function getStrategyById(strategyId: string): SavedStrategy | null {
+export function getStrategyById(strategyId: string): StrategyTemplate | null {
   const strategies = getSavedStrategies()
   return strategies.find((s) => s.strategyId === strategyId) || null
 }

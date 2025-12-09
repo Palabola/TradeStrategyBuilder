@@ -15,25 +15,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { getSavedStrategies, removeStrategyFromStorage, type SavedStrategy } from "@/lib/strategy-storage"
+import { getSavedStrategies, removeStrategyFromStorage } from "@/lib/strategy-storage"
 import { Plus, Play, Edit, Trash2 } from "lucide-react"
+import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 
 export function StrategiesList() {
-  const [strategies, setStrategies] = useState<SavedStrategy[]>([])
+  const [strategies, setStrategies] = useState<StrategyTemplate[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [strategyToDelete, setStrategyToDelete] = useState<SavedStrategy | null>(null)
+  const [strategyToDelete, setStrategyToDelete] = useState<StrategyTemplate | null>(null)
 
   useEffect(() => {
     setStrategies(getSavedStrategies())
   }, [])
 
-  const handleDeleteClick = (strategy: SavedStrategy) => {
+  const handleDeleteClick = (strategy: StrategyTemplate) => {
     setStrategyToDelete(strategy)
     setDeleteDialogOpen(true)
   }
 
   const handleConfirmDelete = () => {
-    if (strategyToDelete) {
+    if (strategyToDelete?.strategyId) {
       removeStrategyFromStorage(strategyToDelete.strategyId)
       setStrategies(getSavedStrategies())
     }

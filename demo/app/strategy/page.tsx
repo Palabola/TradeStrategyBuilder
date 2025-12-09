@@ -1,5 +1,4 @@
 import { Header } from "@/components/header"
-import { channelOptions, unitOptions } from "../../components/strategy/block-types"
 import { StrategyPageClient } from "./client"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 
@@ -12,8 +11,8 @@ export default async function StrategyPage({
 
   const candleOptionsOverride = supportedTimeframes;
   const indicatorOptionsOverride = supportedIndicators;
-  const unitOptionsOverride = unitOptions;
-  const channelOptionsOverride = channelOptions;
+  const unitOptionsOverride = ["USD", "%", "Coin"];
+  const channelOptionsOverride = ["Telemgram", "Email", "Notification"];
   const themeOverride = null;
 
   return (

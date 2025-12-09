@@ -5,13 +5,14 @@ import type React from "react"
 import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { BlockConfig, Parameter, IndicatorOption, CustomTheme } from "./block-types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import type { BlockConfig, Parameter } from "./block-types"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
+import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "./ui/select"
+import { Textarea } from "./ui/textarea"
 import { GripVertical, X, ChevronDown, ChevronUp } from "lucide-react"
+import { CustomTheme, IndicatorOption } from "../types"
 
 interface CanvasBlockProps {
   id: string
@@ -31,7 +32,6 @@ function generateDynamicTitle(config: BlockConfig, values: Record<string, string
 
   const amount = values.amount ?? config.parameters.find((p) => p.name === "amount")?.default ?? ""
   const unit = values.unit ?? config.parameters.find((p) => p.name === "unit")?.default ?? ""
-  const message = values.message ?? config.parameters.find((p) => p.name === "message")?.default ?? ""
   const channel = values.channel ?? config.parameters.find((p) => p.name === "channel")?.default ?? ""
 
   // Position fields

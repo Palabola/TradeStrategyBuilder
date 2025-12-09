@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getStrategyById, getSavedStrategies, type SavedStrategy } from "@/lib/strategy-storage"
+import { getStrategyById, getSavedStrategies } from "@/lib/strategy-storage"
 import { strategyRunner, type StrategyEvaluation } from "@/lib/strategy-runner"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ import {
   XCircle,
   Clock
 } from "lucide-react"
+import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 
 const iterationCycleOptions = [
   { label: "25 cycles", value: 25 },
@@ -37,8 +38,8 @@ export function AnalyzePageClient({ strategyId }: AnalyzePageClientProps) {
   const router = useRouter()
   
   // Strategy state
-  const [savedStrategies, setSavedStrategies] = useState<SavedStrategy[]>([])
-  const [selectedStrategy, setSelectedStrategy] = useState<SavedStrategy | null>(null)
+  const [savedStrategies, setSavedStrategies] = useState<StrategyTemplate[]>([])
+  const [selectedStrategy, setSelectedStrategy] = useState<StrategyTemplate | null>(null)
   const [selectedSymbol, setSelectedSymbol] = useState<string>("")
   const [selectedCycles, setSelectedCycles] = useState<number>(50)
   

@@ -2,8 +2,9 @@
 
 import { useDraggable } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
-import type { BlockConfig, CustomTheme } from "./block-types"
+import type { BlockConfig } from "./block-types"
 import { GripVertical } from "lucide-react"
+import { CustomTheme } from "../types"
 
 interface DraggableBlockProps {
   config: BlockConfig

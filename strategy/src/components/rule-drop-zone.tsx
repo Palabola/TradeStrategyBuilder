@@ -6,11 +6,12 @@ import { useState } from "react"
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CanvasBlock } from "./canvas-block"
-import type { BlockConfig, BlockCategory, CustomTheme } from "./block-types"
+import type { BlockConfig, BlockCategory } from "./block-types"
 import { Plus, Pencil, Check, X, ChevronDown } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { CustomTheme } from "../types"
 
 interface CanvasItem {
   id: string

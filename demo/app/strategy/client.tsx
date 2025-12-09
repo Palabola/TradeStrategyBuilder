@@ -1,10 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { StrategyBuilder } from "@/components/strategy/strategy-builder"
-import { saveStrategyToStorage, type SavedStrategy } from "@/lib/strategy-storage"
-import type { IndicatorOption, CustomTheme, BlockType } from "@/components/strategy/block-types"
-import { blockConfigs, candleOptions as defaultCandleOptions, indicatorOptions as defaultIndicatorOptions } from "@/components/strategy/block-types"
+import { saveStrategyToStorage } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -14,8 +11,9 @@ import { Settings, Plus, X, BarChart3, AlertCircle, Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { agentService, supportedModels } from "../../lib/agent-service"
-import { strategyRunner } from "../../lib/strategy-runner"
+import { strategyRunner, supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
+import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, StrategyBuilder} from '@palabola86/trade-strategy-builder'
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -73,16 +71,16 @@ export function StrategyPageClient({
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   
   // Candle options state
-  const [candleOptions, setCandleOptions] = useState<string[]>(initialCandleOptions ?? defaultCandleOptions)
+  const [candleOptions, setCandleOptions] = useState<string[]>(initialCandleOptions || [])
   const [newCandle, setNewCandle] = useState("")
   
   // Indicator options state
-  const [indicatorOptions, setIndicatorOptions] = useState<IndicatorOption[]>(initialIndicatorOptions ?? defaultIndicatorOptions)
+  const [indicatorOptions, setIndicatorOptions] = useState<IndicatorOption[]>(initialIndicatorOptions || [])
   const [newIndicatorName, setNewIndicatorName] = useState("")
   const [newIndicatorCategory, setNewIndicatorCategory] = useState("price")
 
   // Strategy Analytics state
-  const [deployedStrategy, setDeployedStrategy] = useState<SavedStrategy | null>(null)
+  const [deployedStrategy, setDeployedStrategy] = useState<StrategyTemplate | null>(null)
   const [selectedAnalyticsPair, setSelectedAnalyticsPair] = useState<string>("")
   const [analysisResult, setAnalysisResult] = useState<{
     totalExecutions: number
@@ -91,7 +89,7 @@ export function StrategyPageClient({
   } | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
-  const handleSave = useCallback((strategy: Omit<SavedStrategy, "createdAt" | "updatedAt">) => {
+  const handleSave = useCallback((strategy: StrategyTemplate) => {
     const savedStrategy = saveStrategyToStorage(strategy)
     setDeployedStrategy(savedStrategy)
     // Set default analytics pair to first trading pair
@@ -136,7 +134,7 @@ export function StrategyPageClient({
   }
 
   const resetCandleOptions = () => {
-    setCandleOptions(defaultCandleOptions)
+    setCandleOptions(supportedTimeframes)
   }
 
   // Indicator options handlers
@@ -152,7 +150,7 @@ export function StrategyPageClient({
   }
 
   const resetIndicatorOptions = () => {
-    setIndicatorOptions(defaultIndicatorOptions)
+    setIndicatorOptions(supportedIndicators)
   }
 
   // Analytics handler

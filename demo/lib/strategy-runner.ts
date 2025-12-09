@@ -1,7 +1,6 @@
-import { ActionType, IndicatorOption } from "../components/strategy/block-types"
+import { ActionType, IndicatorOption, StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { candleService, type Candle } from "./candle-service"
 import { indicatorsService } from "./indicators-service"
-import type { SavedStrategy } from "./strategy-storage"
 
 // Supported indicators
 export const supportedIndicators: IndicatorOption[] = [
@@ -407,7 +406,7 @@ export class StrategyRunner {
    * @param until - Optional timestamp to filter candles before this time
    */
   async evaluateStrategy(
-    strategy: SavedStrategy,
+    strategy: StrategyTemplate,
     symbol: string,
     until?: number
   ): Promise<StrategyEvaluation> {
@@ -436,7 +435,7 @@ export class StrategyRunner {
    * Evaluate a strategy for all its configured symbols
    */
   async evaluateStrategyAllSymbols(
-    strategy: SavedStrategy
+    strategy: StrategyTemplate
   ): Promise<StrategyEvaluation[]> {
     const results: StrategyEvaluation[] = []
 
@@ -456,7 +455,7 @@ export class StrategyRunner {
    * @returns Array of strategy evaluations at different points in time
    */
   async analyzeStrategy(
-    strategy: SavedStrategy,
+    strategy: StrategyTemplate,
     testCycles: number,
     symbol: string
   ): Promise<StrategyEvaluation[]> {

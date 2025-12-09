@@ -12,18 +12,7 @@ import {
   ShoppingCart,
   Banknote,
 } from "lucide-react"
-
-export type ConditionBlockType =
-  | "increased-by"
-  | "decreased-by"
-  | "greater-than"
-  | "lower-than"
-  | "crossing-above"
-  | "crossing-below"
-
-export type ActionBlockType = "open-position" | "close-position" | "buy" | "sell" | "notify-me"
-
-export type BlockType = ConditionBlockType | ActionBlockType
+import { ActionBlockType, BlockType, ConditionBlockType, IndicatorOption } from "../types"
 
 export type BlockCategory = "condition" | "action"
 
@@ -38,11 +27,6 @@ export interface BlockConfig {
   parameters: Parameter[]
 }
 
-export interface IndicatorOption {
-  name: string
-  category: string;
-}
-
 export interface Parameter {
   name: string
   type: "select" | "number" | "text" | "textarea"
@@ -51,66 +35,6 @@ export interface Parameter {
   indicatorOptions?: IndicatorOption[]
   placeholder?: string
   default?: string | number
-}
-
-export interface PredefinedStrategyTemplate {
-  id: string
-  name: string
-  description: string
-  strategy: StrategyTemplate
-}
-
-export interface ActionType {
-  index: number
-  action: "OPEN" | "CLOSE" |"BUY" | "SELL" | "NOTIFY"
-  options: {
-    side?: string
-    amount?: number
-    unit?: string
-    leverage?: string
-    stopLoss?: number
-    takeProfit?: number
-    channel?: string
-    message?: string
-  }
-}
-
-export interface ConditionType {
-  index: number
-  type: ConditionBlockType
-  indicator1?: string
-  timeframe1?: string
-  indicator2?: string
-  timeframe2?: string
-  value?: number
-}
-
-export interface ExecutionOptions {
-  runIntervalMinutes?: number
-  maximumExecuteCount?: number
-  intervalBetweenExecutionsMinutes?: number
-  maximumOpenPositions?: number
-}
-
-export interface StrategyTemplate {
-  strategyId?: string
-  strategyName: string
-  symbols: string[]
-  executionOptions: ExecutionOptions
-  rules: {
-    name: string
-    conditions: ConditionType[]
-    actions: ActionType[]
-  }[]
-}
-
-export interface CustomTheme {
-  blocks: {
-    [key in BlockType]?: {
-      color?: string
-      bgColor?: string
-    }
-  }
 }
 
 export const tradingPairs = ["BTC/USD", "ETH/USD", "SOL/USD", "DOGE/USD", "XRP/USD", "ADA/USD"]
