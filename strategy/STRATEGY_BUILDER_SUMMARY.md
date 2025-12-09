@@ -193,7 +193,8 @@ candleOptions={["1s", "5s", "1min", ...]}
 
 ### 3. Custom Theme
 ```tsx
-themeOverride={{ blocks: { "increased-by": { color: "...", bgColor: "..." } } }}
+themeOverride={myCustomTheme}
+// where myCustomTheme = { blocks: { "increased-by": { color: "...", bgColor: "..." } } }
 ```
 
 ### 4. AI Generation
