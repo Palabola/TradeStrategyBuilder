@@ -231,6 +231,26 @@ export default function PersistentStrategyBuilder({ strategyId }: { strategyId?:
 
 ### Custom Theme
 
+The Strategy Builder supports custom theming through the `themeOverride` prop for block colors, and CSS variables for UI elements.
+
+#### Primary Button Colors
+
+You can customize the primary button colors by defining the `--primary` CSS variable in your `globals.css`:
+
+```css
+:root {
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+}
+
+.dark {
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+}
+```
+
+#### Block Theme Override
+
 ```tsx
 "use client"
 

@@ -135,7 +135,7 @@ export function RuleDropZone({
                   e.stopPropagation()
                   onDelete()
                 }}
-                className="h-8 text-muted-foreground hover:text-destructive"
+                className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
                 Remove
               </Button>
