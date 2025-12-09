@@ -464,7 +464,7 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
 
    ### Available resources:
    - Tradeable Symbols: ${tradeableSymbols.join(", ")}
-   - Usable Indicators: ${usableIndicators.join(", ")}
+   - Usable Indicators: ${usableIndicators.join(", ")}. There is a Special indicator called "Value" which represents a numeric constant value, it can be used to compare an indicator to a constant value.
    - Candle Lengths: ${candleLengths.join(", ")}
    - Trade Units: ${tradeUnits.join(", ")}
    - Execution Options: ${JSON.stringify(runIntervalOptions.map(o => o.value))}
@@ -532,10 +532,10 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
     - Rules for each condition:
     1 "increased-by": indicator1 has increased by value% over timeframe1
     2 "decreased-by": indicator1 has decreased by value% over timeframe1
-    3 "greater-than": indicator1 in timeframe1 is greater than indicator2 in timeframe2
-    4 "lower-than": indicator1 in timeframe1 is lower than indicator2 in timeframe2
-    5 "crossing-above": indicator1 in timeframe1 has crossed above indicator2 in timeframe2
-    6 "crossing-below": indicator1 in timeframe1 has crossed below indicator2 in timeframe2
+    3 "greater-than": indicator1 in timeframe1 is greater than indicator2 in timeframe2, or greater than 'value' if indicator2 is "Value"
+    4 "lower-than": indicator1 in timeframe1 is lower than indicator2 in timeframe2, or lower than 'value' if indicator2 is "Value"
+    5 "crossing-above": indicator1 in timeframe1 has crossed above indicator2 in timeframe2, or crossed above 'value' if indicator2 is "Value"
+    6 "crossing-below": indicator1 in timeframe1 has crossed below indicator2 in timeframe2, or crossed below 'value' if indicator2 is "Value"
     - Never use any other condition types!
     - Never use the fields not listed for each condition type!
 
@@ -609,11 +609,19 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
         "conditions": [
             {
             "index": 0,
-            "type": "lower-than",
+            "type": "crossing-below",
             "indicator1": "RSI(14)",
             "timeframe1": "4h",
             "indicator2": "RSI(7)",
             "timeframe2": "15min"
+            },
+            {
+            "index": 1,
+            "type": "greater-than",
+            "indicator1": "RSI(14)",
+            "timeframe1": "4h",
+            "indicator2": "Value",
+            "value": "30"
             }
         ],
         "actions": [

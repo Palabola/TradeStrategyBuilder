@@ -1,6 +1,6 @@
 {
   "name": "@palabola86/trade-strategy-builder",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "A visual trading strategy builder component for React/Next.js",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -65,6 +65,7 @@
   ],
   "author": "Palabola86",
   "license": "MIT",
+  "homepage": "https://palabola.github.io/TradeStrategyBuilder",
   "repository": {
     "type": "git",
     "url": "https://github.com/Palabola/TradeStrategyBuilder.git"
