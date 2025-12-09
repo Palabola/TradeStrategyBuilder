@@ -1,13 +1,14 @@
+"use client"
+
+import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 import { Header } from "@/components/header"
 import { StrategyPageClient } from "./client"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 
-export default async function StrategyPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ strategyId?: string }>
-}) {
-  const { strategyId } = await searchParams
+function StrategyContent() {
+  const searchParams = useSearchParams()
+  const strategyId = searchParams.get("strategyId") ?? undefined
 
   const candleOptionsOverride = supportedTimeframes;
   const indicatorOptionsOverride = supportedIndicators;
@@ -15,6 +16,19 @@ export default async function StrategyPage({
   const channelOptionsOverride = ["Telemgram", "Email", "Notification"];
   const themeOverride = null;
 
+  return (
+    <StrategyPageClient
+      strategyId={strategyId}
+      candleOptions={candleOptionsOverride}
+      indicatorOptions={indicatorOptionsOverride}
+      unitOptions={unitOptionsOverride}
+      channelOptions={channelOptionsOverride}
+      themeOverride={themeOverride}
+    />
+  )
+}
+
+export default function StrategyPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -25,14 +39,9 @@ export default async function StrategyPage({
           <p className="text-muted-foreground hidden lg:flex">Click on options to configure parameters</p>
         </div>
 
-        <StrategyPageClient
-          strategyId={strategyId}
-          candleOptions={candleOptionsOverride}
-          indicatorOptions={indicatorOptionsOverride}
-          unitOptions={unitOptionsOverride}
-          channelOptions={channelOptionsOverride}
-          themeOverride={themeOverride}
-        />
+        <Suspense fallback={<div>Loading...</div>}>
+          <StrategyContent />
+        </Suspense>
       </main>
     </div>
   )

@@ -1,13 +1,18 @@
+"use client"
+
+import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 import { Header } from "@/components/header"
 import { AnalyzePageClient } from "./client"
 
-export default async function AnalyzePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ strategy?: string }>
-}) {
-  const { strategy: strategyId } = await searchParams
+function AnalyzeContent() {
+  const searchParams = useSearchParams()
+  const strategyId = searchParams.get("strategy") ?? undefined
 
+  return <AnalyzePageClient strategyId={strategyId} />
+}
+
+export default function AnalyzePage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -18,7 +23,9 @@ export default async function AnalyzePage({
           <p className="text-muted-foreground">Backtest your trading strategies on historical data</p>
         </div>
 
-        <AnalyzePageClient strategyId={strategyId} />
+        <Suspense fallback={<div>Loading...</div>}>
+          <AnalyzeContent />
+        </Suspense>
       </main>
     </div>
   )
