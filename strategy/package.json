@@ -1,6 +1,6 @@
 {
   "name": "@palabola86/trade-strategy-builder",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A visual trading strategy builder component for React/Next.js",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

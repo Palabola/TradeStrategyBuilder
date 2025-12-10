@@ -59,6 +59,7 @@ export interface RuleEvaluation {
 export interface StrategyEvaluation {
   strategyName: string
   symbol: string
+  priceUSD: number | null
   evaluatedAt: Date
   rules: RuleEvaluation[]
   triggeredRules: RuleEvaluation[]
@@ -107,6 +108,60 @@ export class StrategyRunner {
    */
   clearCache(): void {
     this.candleCache.clear()
+  }
+
+  /**
+   * Get the price at a specific timestamp
+   * Calculates the optimal starting timeframe based on how far back the timestamp is:
+   * - 1min: ~12 hours of data (720 candles × 1 min)
+   * - 15min: ~7.5 days of data (720 candles × 15 min)
+   * - 1h: ~30 days of data (720 candles × 60 min)
+   * - 24h: ~2 years of data (720 candles × 24 hours)
+   * @param symbol - Trading pair symbol
+   * @param timestamp - Optional timestamp to get price at
+   */
+  async getPriceAt(symbol: string, timestamp?: number): Promise<number | null> {
+    const timeframesToTry: Timeframe[] = ["1min", "15min", "1h", "24h"]
+    
+    // Calculate optimal starting index based on time difference
+    let startIndex = 0
+    if (timestamp) {
+      const now = Date.now()
+      const diffMs = now - timestamp
+      const diffMinutes = diffMs / (60 * 1000)
+      
+      // Determine starting timeframe based on how far back we need to go
+      // Each timeframe covers ~720 candles
+      const maxCandles = 720
+      if (diffMinutes > maxCandles * 60) {
+        // More than ~30 days, start with 24h
+        startIndex = 3
+      } else if (diffMinutes > maxCandles * 15) {
+        // More than ~7.5 days, start with 1h
+        startIndex = 2
+      } else if (diffMinutes > maxCandles) {
+        // More than ~12 hours, start with 15min
+        startIndex = 1
+      }
+      // Otherwise start with 1min (startIndex = 0)
+    }
+    
+    for (let i = startIndex; i < timeframesToTry.length; i++) {
+      const timeframe = timeframesToTry[i]
+      try {
+        const candles = await this.fetchCandles(symbol, timeframe, timestamp)
+        if (candles && candles.length > 0) {
+          const lastCandle = candles[candles.length - 1]
+          return lastCandle.close || lastCandle.open
+        }
+      } catch (error) {
+        // Continue to next timeframe
+        console.warn(`Failed to get price with ${timeframe} candles, trying next...`)
+      }
+    }
+    
+    console.error(`Unable to get price for ${symbol} at ${timestamp ? new Date(timestamp).toISOString() : 'now'}`)
+    return null
   }
 
   /**
@@ -422,9 +477,13 @@ export class StrategyRunner {
 
     const triggeredRules = ruleEvaluations.filter((r) => r.allConditionsMet)
 
+    // Get price at the evaluation timestamp
+    const priceUSD = await this.getPriceAt(symbol, until)
+
     return {
       strategyName: strategy.strategyName,
       symbol,
+      priceUSD,
       evaluatedAt: until ? new Date(until) : new Date(),
       rules: ruleEvaluations,
       triggeredRules,

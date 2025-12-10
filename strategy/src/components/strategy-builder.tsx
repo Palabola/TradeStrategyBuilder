@@ -496,8 +496,6 @@ export function StrategyBuilder({
     }
 
     setCurrentStrategyId(strategyToSave.strategyId)
-
-    alert("Strategy deployed successfully!")
   }
 
   const generateStrategyJson = (): StrategyJsonResult => {
