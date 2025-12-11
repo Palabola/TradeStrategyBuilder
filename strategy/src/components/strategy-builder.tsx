@@ -178,11 +178,15 @@ function parseStrategyToRuleGroups(
             values.leverage = action.options.leverage || "1x"
             values.stopLoss = action.options.stopLoss ?? 0
             values.takeProfit = action.options.takeProfit ?? 0
+            values.trailingStop = action.options.trailingStop ?? 0
           } else if (blockType === "close-position") {
             // No parameters for close-position
           } else if (blockType === "buy" || blockType === "sell") {
             values.amount = action.options.amount || ""
             values.unit = action.options.unit || "USD"
+            values.stopLoss = action.options.stopLoss ?? 0
+            values.takeProfit = action.options.takeProfit ?? 0
+            values.trailingStop = action.options.trailingStop ?? 0
           } else if (blockType === "notify-me") {
             values.channel = action.options.channel || ""
             values.message = action.options.message || ""
@@ -576,6 +580,7 @@ export function StrategyBuilder({
               leverage: item.values.leverage,
               stopLoss: item.values.stopLoss,
               takeProfit: item.values.takeProfit,
+              trailingStop: item.values.trailingStop,
             },
           }
         } else if (item.config.type === "close-position") {
@@ -595,6 +600,9 @@ export function StrategyBuilder({
             options: {
               amount: item.values.amount,
               unit: item.values.unit,
+              stopLoss: item.values.stopLoss,
+              takeProfit: item.values.takeProfit,
+              trailingStop: item.values.trailingStop,
             },
           }
         } else if (item.config.type === "sell") {
@@ -607,6 +615,9 @@ export function StrategyBuilder({
             options: {
               amount: item.values.amount,
               unit: item.values.unit,
+              stopLoss: item.values.stopLoss,
+              takeProfit: item.values.takeProfit,
+              trailingStop: item.values.trailingStop,
             },
           }
         } else if (item.config.type === "notify-me") {

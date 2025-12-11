@@ -20,7 +20,7 @@ export interface StrategyBuilderProps {
 
 export interface ActionType {
   index: number
-  action: "OPEN" | "CLOSE" |"BUY" | "SELL" | "NOTIFY"
+  action: "OPEN" | "CLOSE" | "BUY" | "SELL" | "NOTIFY"
   options: {
     side?: string
     amount?: number
@@ -28,6 +28,7 @@ export interface ActionType {
     leverage?: string
     stopLoss?: number
     takeProfit?: number
+    trailingStop?: number
     channel?: string
     message?: string
   }

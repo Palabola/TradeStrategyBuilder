@@ -384,6 +384,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
       const leverageParam = config.parameters.find((p) => p.name === "leverage")
       const stopLossParam = config.parameters.find((p) => p.name === "stopLoss")
       const takeProfitParam = config.parameters.find((p) => p.name === "takeProfit")
+      const trailingStopParam = config.parameters.find((p) => p.name === "trailingStop")
 
       return (
         <div className="space-y-4">
@@ -414,6 +415,10 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
               <Label>Take Profit (%)</Label>
               {takeProfitParam && renderParameter(takeProfitParam)}
             </div>
+            <div className="space-y-2">
+              <Label>Trailing Stop (%)</Label>
+              {trailingStopParam && renderParameter(trailingStopParam)}
+            </div>
           </div>
         </div>
       )
@@ -427,16 +432,35 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
     if (config.type === "buy" || config.type === "sell") {
       const amountParam = config.parameters.find((p) => p.name === "amount")
       const unitParam = config.parameters.find((p) => p.name === "unit")
+      const stopLossParam = config.parameters.find((p) => p.name === "stopLoss")
+      const takeProfitParam = config.parameters.find((p) => p.name === "takeProfit")
+      const trailingStopParam = config.parameters.find((p) => p.name === "trailingStop")
 
       return (
-        <div className="flex items-end gap-3">
-          <div className="space-y-2">
-            <Label>Amount</Label>
-            {amountParam && renderParameter(amountParam)}
+        <div className="space-y-4">
+          <div className="flex items-end gap-3">
+            <div className="space-y-2">
+              <Label>Amount</Label>
+              {amountParam && renderParameter(amountParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Unit</Label>
+              {unitParam && renderParameter(unitParam)}
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Unit</Label>
-            {unitParam && renderParameter(unitParam)}
+          <div className="flex items-end gap-3">
+            <div className="space-y-2">
+              <Label>Stop Loss (%)</Label>
+              {stopLossParam && renderParameter(stopLossParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Take Profit (%)</Label>
+              {takeProfitParam && renderParameter(takeProfitParam)}
+            </div>
+            <div className="space-y-2">
+              <Label>Trailing Stop (%)</Label>
+              {trailingStopParam && renderParameter(trailingStopParam)}
+            </div>
           </div>
         </div>
       )
@@ -542,9 +566,9 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
       <div className={`flex items-center justify-between p-3 border-b border-border rounded-t-md ${effectiveBgColor}`}>
         <div className="flex items-center gap-3">
           <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+            <GripVertical className="h-4 w-4 min-w-4 text-muted-foreground" />
           </button>
-          <div className={`flex h-8 w-8 items-center justify-center rounded-md ${effectiveBgColor} ${effectiveColor}`}>
+          <div className={`flex h-8 w-8 min-w-8 items-center justify-center rounded-md ${effectiveBgColor} ${effectiveColor}`}>
             <Icon className="h-4 w-4" />
           </div>
           <span className="text-sm">{generateDynamicTitle(config, values)}</span>
