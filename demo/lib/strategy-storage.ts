@@ -49,7 +49,7 @@ export function removeStrategyFromStorage(strategyId: string): boolean {
   return true
 }
 
-export function getStrategyById(strategyId: string): StrategyTemplate | null {
+export function getStrategyById(strategyId: string): StrategyTemplate | undefined {
   const strategies = getSavedStrategies()
-  return strategies.find((s) => s.strategyId === strategyId) || null
+  return strategies.find((s) => s.strategyId === strategyId)
 }

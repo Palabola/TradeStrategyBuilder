@@ -30,6 +30,7 @@ import {
 import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 
 const iterationCycleOptions = [
+  { label: "10 cycles", value: 10 },
   { label: "25 cycles", value: 25 },
   { label: "50 cycles", value: 50 },
   { label: "100 cycles", value: 100 },
@@ -102,13 +103,19 @@ export function AnalyzePageClient({ strategyId }: AnalyzePageClientProps) {
     setAnalysisResult(null)
     setExpandedResults(new Set())
     
+    const coinSymbol = selectedSymbol.split("/")[0]
+    const balances = [
+      { currency: "USD", balance: parseFloat(initialUSD) },
+      { currency: coinSymbol, balance: parseFloat(initialCoin) },
+    ]
+
     try {
       const response = await strategyRunner.analyzeStrategy(
         selectedStrategy, 
         selectedCycles, 
-        selectedSymbol
+        selectedSymbol,
+        balances
       )
-      console.log("Analysis Result:", response)
       
       // Calculate summary: triggered count per rule
       const ruleTriggeredCounts: Record<string, number> = {}
@@ -500,13 +507,13 @@ export function AnalyzePageClient({ strategyId }: AnalyzePageClientProps) {
                                           const opts = action.options || {}
                                           
                                           let actionLabel: string = actionType
-                                          if (actionType === "OPEN" || actionType === "CLOSE") {
+                                          if (actionType === "open-position" || actionType === "close-position") {
                                             actionLabel = `${actionType} ${opts.side || ''} ${opts.amount || ''} ${opts.unit || ''}`
                                             if (opts.leverage && opts.leverage !== "No") actionLabel += ` @ ${opts.leverage}`
-                                          } else if (actionType === "BUY" || actionType === "SELL") {
+                                          } else if (actionType === "buy" || actionType === "sell") {
                                             actionLabel = `${actionType} ${opts.amount || ''} ${opts.unit || ''}`
-                                          } else if (actionType === "NOTIFY") {
-                                            actionLabel = `NOTIFY via ${opts.channel || 'N/A'}`
+                                          } else if (actionType === "notify-me") {
+                                            actionLabel = `notify via ${opts.channel || 'N/A'}`
                                           }
                                           
                                           return (
@@ -554,7 +561,7 @@ interface TradesSummaryProps {
 interface TradeAction {
   timestamp: Date
   ruleName: string
-  actionType: "BUY" | "SELL" | "OPEN" | "CLOSE"
+  actionType: "buy" | "sell" | "open-position" | "close-position"
   side?: string
   amount?: number
   unit?: string
@@ -571,11 +578,11 @@ function TradesSummary({ analysisResult }: TradesSummaryProps) {
       for (const triggeredRule of evaluation.triggeredRules) {
         for (const action of triggeredRule.actions) {
           const actionType = action.action
-          if (actionType === "BUY" || actionType === "SELL" || actionType === "OPEN" || actionType === "CLOSE") {
+          if (actionType === "buy" || actionType === "sell" || actionType === "open-position" || actionType === "close-position") {
             tradeActions.push({
               timestamp: evaluation.evaluatedAt,
               ruleName: triggeredRule.ruleName,
-              actionType: actionType as "BUY" | "SELL" | "OPEN" | "CLOSE",
+              actionType: actionType as "buy" | "sell" | "open-position" | "close-position",
               side: action.options?.side,
               amount: action.options?.amount,
               unit: action.options?.unit,
@@ -583,7 +590,6 @@ function TradesSummary({ analysisResult }: TradesSummaryProps) {
               priceUSD: evaluation.priceUSD,
             })
           }
-          console.log("Action Processed:", evaluation.priceUSD)
         }
       }
     }
@@ -606,26 +612,26 @@ function TradesSummary({ analysisResult }: TradesSummaryProps) {
     
     for (const trade of trades) {
       switch (trade.actionType) {
-        case "BUY":
+        case "buy":
           stats.buyCount++
           if (trade.amount && trade.unit === "USD") {
             stats.totalBuyAmount += trade.amount
           }
           break
-        case "SELL":
+        case "sell":
           stats.sellCount++
           if (trade.amount && trade.unit === "USD") {
             stats.totalSellAmount += trade.amount
           }
           break
-        case "OPEN":
+        case "open-position":
           if (trade.side === "LONG") {
             stats.openLongCount++
           } else if (trade.side === "SHORT") {
             stats.openShortCount++
           }
           break
-        case "CLOSE":
+        case "close-position":
           stats.closeCount++
           break
       }
@@ -702,9 +708,9 @@ function TradesSummary({ analysisResult }: TradesSummaryProps) {
         <h4 className="text-sm font-medium mb-3">Trade History</h4>
         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
           {trades.map((trade, index) => {
-            const isBuyOrLong = trade.actionType === "BUY" || (trade.actionType === "OPEN" && trade.side === "LONG")
-            const isSellOrShort = trade.actionType === "SELL" || (trade.actionType === "OPEN" && trade.side === "SHORT")
-            const isClose = trade.actionType === "CLOSE"
+            const isBuyOrLong = trade.actionType === "buy" || (trade.actionType === "open-position" && trade.side === "LONG")
+            const isSellOrShort = trade.actionType === "sell" || (trade.actionType === "open-position" && trade.side === "SHORT")
+            const isClose = trade.actionType === "close-position"
             
             let bgColor = "bg-muted/50"
             let borderColor = "border-transparent"
@@ -725,7 +731,7 @@ function TradesSummary({ analysisResult }: TradesSummaryProps) {
             }
             
             let tradeLabel: string = trade.actionType
-            if (trade.actionType === "OPEN") {
+            if (trade.actionType === "open-position") {
               tradeLabel = `OPEN ${trade.side}`
             }
             if (trade.amount && trade.unit) {

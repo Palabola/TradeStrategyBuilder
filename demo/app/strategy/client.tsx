@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Settings, Plus, X, BarChart3 } from "lucide-react"
+import { Settings, Plus, X, BarChart3, DollarSign, Banknote, Bell } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { agentService, supportedModels } from "../../lib/agent-service"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
-import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, StrategyBuilder} from '@palabola86/trade-strategy-builder'
+import { StrategyBuilder, CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig} from "@palabola86/trade-strategy-builder"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
-// Pre-compute themes at module level for stability
+// Grayscale theme definition set all blocks to grayscale colors
 const GRAYSCALE_THEME: CustomTheme = (() => {
   const blocks: CustomTheme["blocks"] = {}
   const blockTypes = Object.keys(blockConfigs) as BlockType[]
@@ -32,26 +32,81 @@ const GRAYSCALE_THEME: CustomTheme = (() => {
   return { blocks }
 })()
 
-const COLORED_THEME: CustomTheme = (() => {
-  const blocks: CustomTheme["blocks"] = {}
-  const blockTypes = Object.keys(blockConfigs) as BlockType[]
-  
-  for (const blockType of blockTypes) {
-    const config = blockConfigs[blockType]
-    blocks[blockType] = {
-      color: config.color,
-      bgColor: config.bgColor,
-    }
-  }
-  
-  return { blocks }
-})()
+// Colored theme definition with app defined vibrant colors
+const COLORED_THEME: CustomTheme = {
+  blocks: {
+    "increased-by": {
+      color: "text-info",
+      bgColor: "bg-info/10 border-info/30",
+    },
+    "decreased-by": {
+      color: "text-destructive",
+      bgColor: "bg-destructive/10 border-destructive/30",
+    },
+    "greater-than": {
+      color: "text-primary",
+      bgColor: "bg-primary/10 border-primary/30",
+    },
+    "lower-than": {
+      color: "text-pink",
+      bgColor: "bg-pink/10 border-pink/30",
+    },
+    "crossing-above": {
+      color: "text-cyan",
+      bgColor: "bg-cyan/10 border-cyan/30",
+    },
+    "crossing-below": {
+      color: "text-teal",
+      bgColor: "bg-teal/10 border-teal/30",
+    },
+    "open-position": {
+      color: "text-success",
+      bgColor: "bg-success/10 border-success/30",
+    },
+    "close-position": {
+      color: "text-destructive",
+      bgColor: "bg-destructive/10 border-destructive/30",
+    },
+    "buy": {
+      color: "text-success",
+      bgColor: "bg-success/10 border-success/30",
+    },
+    "sell": {
+      color: "text-destructive",
+      bgColor: "bg-destructive/10 border-destructive/30",
+    },
+    "buy-order": {
+      color: "text-success",
+      bgColor: "bg-success/10 border-success/30",
+    },
+    "sell-order": {
+      color: "text-destructive",
+      bgColor: "bg-destructive/10 border-destructive/30",
+    },
+    "notify-me": {
+      color: "text-warning",
+      bgColor: "bg-warning/10 border-warning/30",
+    },
+    "buy-limit": {
+      color: "text-success",
+      bgColor: "bg-success/10 border-success/30",
+    },
+    "sell-limit": {
+      color: "text-destructive",
+      bgColor: "bg-destructive/10 border-destructive/30",
+    },
+    "always": {
+      color: "text-warning",
+      bgColor: "bg-warning/10 border-warning/30",
+    },
+  },
+}
 
 // Available indicator categories
 const indicatorCategories = ["price", "oscillator", "volume", "volatility"]
 
 interface StrategyPageClientProps {
-  strategyId?: string
+  initialStrategy?: StrategyTemplate
   candleOptions?: string[]
   indicatorOptions?: IndicatorOption[]
   unitOptions?: string[]
@@ -60,7 +115,7 @@ interface StrategyPageClientProps {
 }
 
 export function StrategyPageClient({
-  strategyId,
+  initialStrategy,
   candleOptions: initialCandleOptions,
   indicatorOptions: initialIndicatorOptions,
   unitOptions,
@@ -84,6 +139,160 @@ export function StrategyPageClient({
   const [showDeployDialog, setShowDeployDialog] = useState(false)
   const [lastSavedStrategyId, setLastSavedStrategyId] = useState<string | null>(null)
 
+  const customBlockConfigs: Record<BlockType, BlockConfig> = {
+    // Example custom block configuration
+    'buy-limit': {
+      label: 'Buy Limit',
+      description: 'Place a buy limit order at a specified price',
+      promptDescription: "Buy limit order at a limitPrice in unitLimit as specific price or percentage from current price. stopLoss, takeProfit, and trailingStop are optional and can be set as percentages.",
+      icon: DollarSign,
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10 border-green-500/30',
+      category: 'action',
+      parameters: [
+        [
+          {
+            name: "limitPrice",
+            type: "number",
+            label: "Limit Price",
+            default: 0.5,
+            required: true,
+          },
+          {
+            name: "unitLimit",
+            type: "select",
+            label: "Unit",
+            options: unitOptions,
+            default: "%",
+            required: true,
+          },
+        ],
+        [
+          {
+            name: "amount",
+            type: "number",
+            label: "Amount",
+            placeholder: "100",
+            default: 100,
+            required: true,
+          },
+          {
+            name: "unit",
+            type: "select",
+            label: "Unit",
+            options: unitOptions,
+            default: "USD",
+            required: true,
+          },
+        ],
+        [
+          {
+            name: "stopLoss",
+            type: "number",
+            label: "Stop Loss (%)",
+            default: 0,
+          },
+          {
+            name: "takeProfit",
+            type: "number",
+            label: "Take Profit (%)",
+            default: 0,
+          },
+          {
+            name: "trailingStop",
+            type: "number",
+            label: "Trailing Stop (%)",
+            default: 0,
+          },
+        ],
+      ]
+    },
+     "sell-limit": {
+    label: "Sell Limit",
+    labelPostfixFunction: (params: any) => {
+      let result = `${params.amount} ${params.unit}`
+      if (Number(params.stopLoss) > 0 || Number(params.takeProfit) > 0) {
+        if (Number(params.stopLoss) > 0) result += ` SL:${params.stopLoss}%`
+        if (Number(params.takeProfit) > 0) result += ` TP:${params.takeProfit}%`
+      }
+      return result
+    },
+    description: "Place a sell limit order at a specified price",
+    promptDescription: "Sell limit order at a limitPrice in unitLimit as specific price or percentage from current price. stopLoss, takeProfit, and trailingStop are optional and can be set as percentages.",
+    icon: Banknote,
+    color: "text-red-500",
+    bgColor: "bg-red-500/10 border-red-500/30",
+    category: "action",
+    parameters: [
+       [
+          {
+            name: "limitPrice",
+            type: "number",
+            label: "Limit Price",
+            default: 0.5,
+            required: true,
+          },
+          {
+            name: "unitLimit",
+            type: "select",
+            label: "Unit",
+            options: unitOptions,
+            default: "%",
+            required: true,
+          },
+      ],
+      [
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "USD",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+        {
+          name: "trailingStop",
+          type: "number",
+          label: "Trailing Stop (%)",
+          default: 0,
+        },
+      ],
+    ],
+    },
+    "always": {
+      label: "Always Trigger",
+      description: "Always trigger the action regardless of conditions",
+      promptDescription: "Always triggers the associated action block. Use this to create actions that should run unconditionally every time.",
+      icon: Bell,
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-500/10 border-yellow-500/30",
+      category: "condition",
+      parameters: [],
+    },
+  }
+
   const handleSave = useCallback((strategy: StrategyTemplate) => {
     const savedStrategy = saveStrategyToStorage(strategy)
     setLastSavedStrategyId(savedStrategy.strategyId || null)
@@ -93,11 +302,6 @@ export function StrategyPageClient({
   // AI function wrapper - delegates to agentService.callAI
   const handleCallAI = useCallback(async (systemPrompt: string, userPrompts: string[], model: string): Promise<string> => {
     return await agentService.callAI(systemPrompt, userPrompts, model)
-  }, [])
-
-  const loadStrategyById = useCallback((id: string): StrategyTemplate | null => {
-    const strategy = getStrategyById(id)
-    return strategy
   }, [])
 
   // Compute the actual theme based on selection
@@ -312,18 +516,20 @@ export function StrategyPageClient({
 
       <div className="flex gap-4 w-full">
       <StrategyBuilder
+      configOptions={{
+          ...blockConfigs,
+          ...customBlockConfigs
+        }}
         key={builderKey}
-        strategyId={strategyId}
+        initialStrategy={initialStrategy}
         candleOptions={candleOptions}
         indicatorOptions={indicatorOptions}
         unitOptions={unitOptions}
-        channelOptions={channelOptions}
         predefinedStrategies={predefinedStrategies}
         onSave={handleSave}
         themeOverride={computedTheme}
         supportedAIModels={supportedModels}
         callAIFunction={handleCallAI}
-        getStrategyById={loadStrategyById}
       />
       </div>
     </div>

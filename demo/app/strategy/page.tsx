@@ -5,6 +5,7 @@ import { Suspense } from "react"
 import { Header } from "@/components/header"
 import { StrategyPageClient } from "./client"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
+import { getStrategyById } from "../../lib/strategy-storage"
 
 function StrategyContent() {
   const searchParams = useSearchParams()
@@ -18,7 +19,7 @@ function StrategyContent() {
 
   return (
     <StrategyPageClient
-      strategyId={strategyId}
+      initialStrategy={strategyId ? getStrategyById(strategyId) : undefined}
       candleOptions={candleOptionsOverride}
       indicatorOptions={indicatorOptionsOverride}
       unitOptions={unitOptionsOverride}

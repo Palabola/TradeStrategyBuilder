@@ -9,40 +9,47 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
     name: "Buy the Dip!",
     description: "Buy ETH and BTC when price drops at least 1% in 24 hours",
     strategy: {
-      strategyId: "0391b0b0-01d8-4843-960a-e045052d7096",
-      strategyName: "Buy when price drops",
-      symbols: ["BTC/USD", "ETH/USD"],
-      executionOptions: {
-        runIntervalMinutes: 360,
-        maximumExecuteCount: 20,
-        intervalBetweenExecutionsMinutes: 360,
-        maximumOpenPositions: 1
-      },
-      rules: [
+  strategyId: "5b85b5c1-02cb-4156-98c8-d0e85622ad04",
+  strategyName: "Buy the Dip",
+  symbols: [
+    "BTC/USD",
+    "ETH/USD"
+  ],
+  executionOptions: {
+    runIntervalMinutes: 60,
+    maximumExecuteCount: 10,
+    intervalBetweenExecutionsMinutes: 60,
+    maximumOpenPositions: 1
+  },
+  rules: [
+    {
+      name: "Buy the Dip",
+      conditions: [
         {
-          name: "Buy the Dip",
-          conditions: [
-            {
-              index: 0,
-              type: "decreased-by",
-              indicator1: "Price",
-              timeframe1: "24h",
-              value: 1,
-            },
-          ],
-          actions: [
-            {
-              index: 0,
-              action: "BUY",
-              options: {
-                amount: 25,
-                unit: "USD",
-              },
-            },
-          ],
-        },
+          index: 0,
+          type: "decreased-by",
+          options: {
+            indicator1: "Price",
+            timeframe1: "24h",
+            value: 5
+          }
+        }
       ],
-    },
+      actions: [
+        {
+          index: 0,
+          action: "buy",
+          options: {
+            amount: 25,
+            unit: "USD",
+            takeProfit: 10,
+            trailingStop: 5
+          }
+        }
+      ]
+    }
+  ]
+}
   },
   {
     id: "2",
@@ -69,15 +76,17 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
             {
               index: 0,
               type: "increased-by",
-              indicator1: "Price",
-              timeframe1: "4h",
-              value: 5
+              options: {
+                indicator1: "Price",
+                timeframe1: "4h",
+                value: 5
+              }
             }
           ],
           actions: [
             {
               index: 0,
-              action: "BUY",
+              action: "buy",
               options: {
                 amount: 100,
                 unit: "%"
@@ -85,7 +94,7 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
             },
             {
               index: 1,
-              action: "NOTIFY",
+              action: "notify-me",
               options: {
                 channel: "Email",
                 message: "Sure its gona go up!"
@@ -99,15 +108,17 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
             {
               index: 0,
               type: "decreased-by",
-              indicator1: "Price",
-              timeframe1: "4h",
-              value: 5
+              options: {
+                indicator1: "Price",
+                timeframe1: "4h",
+                value: 5
+              }
             }
           ],
           actions: [
             {
               index: 0,
-              action: "SELL",
+              action: "sell",
               options: {
                 amount: 100,
                 unit: "%"
@@ -115,7 +126,7 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
             },
             {
               index: 1,
-              action: "NOTIFY",
+              action: "notify-me",
               options: {
                 channel: "Email",
                 message: "This is the end, exit before it goes to 0."

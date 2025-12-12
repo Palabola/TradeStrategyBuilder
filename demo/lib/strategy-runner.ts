@@ -1,5 +1,6 @@
 import { ActionType, IndicatorOption, StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { candleService, type Candle } from "./candle-service"
+import { AddOrderParams, exchangeService, OrderSide, OrderType } from "./exchange-service"
 import { indicatorsService } from "./indicators-service"
 
 // Supported indicators
@@ -85,7 +86,7 @@ export class StrategyRunner {
     const cacheKey = this.getCacheKey(symbol, timeframe)
     
     let candles: Candle[]
-    
+
     if (this.candleCache.has(cacheKey)) {
       candles = this.candleCache.get(cacheKey)!
     } else {
@@ -317,9 +318,9 @@ export class StrategyRunner {
       switch (type) {
         case "increased-by":
         case "decreased-by": {
-          const indicator = condition.indicator1 as string
-          const timeframe = condition.timeframe1 as Timeframe
-          const targetPercentage = Number(condition.value) || 0
+          const indicator = condition.options.indicator1 as string
+          const timeframe = condition.options.timeframe1 as Timeframe
+          const targetPercentage = Number(condition.options.value) || 0
 
           const currentValue = await this.getIndicatorValue(symbol, indicator, timeframe, until)
           const previousValue = await this.getPreviousIndicatorValue(symbol, indicator, timeframe, until)
@@ -341,16 +342,16 @@ export class StrategyRunner {
 
         case "greater-than":
         case "lower-than": {
-          const indicator1 = condition.indicator1 as string
-          const timeframe1 = condition.timeframe1 as Timeframe
-          const indicator2 = condition.indicator2 as string
+          const indicator1 = condition.options.indicator1 as string
+          const timeframe1 = condition.options.timeframe1 as Timeframe
+          const indicator2 = condition.options.indicator2 as string
 
           const value1 = await this.getIndicatorValue(symbol, indicator1, timeframe1, until)
           
           // Handle "Value" indicator2 - use the value field directly
           let value2: number | null
           if (indicator2 === "Value") {
-            value2 = condition.value !== undefined ? Number(condition.value) : null
+            value2 = condition.options.value !== undefined ? Number(condition.options.value) : null
           } else {
             const timeframe2 = condition.timeframe2 as Timeframe
             value2 = await this.getIndicatorValue(symbol, indicator2, timeframe2, until)
@@ -371,9 +372,9 @@ export class StrategyRunner {
 
         case "crossing-above":
         case "crossing-below": {
-          const indicator1 = condition.indicator1 as string
-          const timeframe1 = condition.timeframe1 as Timeframe
-          const indicator2 = condition.indicator2 as string
+          const indicator1 = condition.options.indicator1 as string
+          const timeframe1 = condition.options.timeframe1 as Timeframe
+          const indicator2 = condition.options.indicator2 as string
 
           const currentValue1 = await this.getIndicatorValue(symbol, indicator1, timeframe1, until)
           const previousValue1 = await this.getPreviousIndicatorValue(symbol, indicator1, timeframe1, until)
@@ -382,11 +383,11 @@ export class StrategyRunner {
           let currentValue2: number | null
           let previousValue2: number | null
           if (indicator2 === "Value") {
-            const staticValue = condition.value !== undefined ? Number(condition.value) : null
+            const staticValue = condition.options.value !== undefined ? Number(condition.options.value) : null
             currentValue2 = staticValue
             previousValue2 = staticValue // Static value doesn't change
           } else {
-            const timeframe2 = condition.timeframe2 as Timeframe
+            const timeframe2 = condition.options.timeframe2 as Timeframe
             currentValue2 = await this.getIndicatorValue(symbol, indicator2, timeframe2, until)
             previousValue2 = await this.getPreviousIndicatorValue(symbol, indicator2, timeframe2, until)
           }
@@ -463,12 +464,14 @@ export class StrategyRunner {
   async evaluateStrategy(
     strategy: StrategyTemplate,
     symbol: string,
-    until?: number
+    until: number | undefined = undefined,
+    clearCacheBeforeEvaluation: boolean = false
   ): Promise<StrategyEvaluation> {
-    // Clear cache before evaluation to get fresh data
-    this.clearCache()
-
     const ruleEvaluations: RuleEvaluation[] = []
+
+    if (clearCacheBeforeEvaluation) {
+      this.clearCache()
+    }
 
     for (let i = 0; i < strategy.rules.length; i++) {
       const ruleResult = await this.evaluateRule(symbol, strategy.rules[i], i, until)
@@ -516,22 +519,38 @@ export class StrategyRunner {
   async analyzeStrategy(
     strategy: StrategyTemplate,
     testCycles: number,
-    symbol: string
+    symbol: string,
+    balances: Array<{ currency: string; balance: number }>
   ): Promise<StrategyEvaluation[]> {
-    // Get interval from strategy or default to 15 minutes
+    // Clear cache before evaluation to get fresh data
+    this.clearCache()
+
+    exchangeService.reset();
+
+    // Set initial account balances
+    for (const { currency, balance } of balances) {
+      exchangeService.setAccountBalance(currency, balance)
+    }
+
+    const results: StrategyEvaluation[] = []
+    const lastRuleTriggerTimes: Map<number, number> = new Map()
+
+    let executionLimit  = testCycles;
+    
+    if (executionLimit !== undefined && executionLimit < testCycles) {
+      executionLimit = executionLimit
+    } 
+
+     // Get interval from strategy or default to 15 minutes
     const intervalMinutes = strategy.executionOptions?.runIntervalMinutes ?? 15
     const intervalMs = intervalMinutes * 60 * 1000
 
     // Calculate starting time: now - (cycles * intervalMinutes)
     const now = Date.now()
-    const startTime = now - (testCycles * intervalMs)
-
-    const results: StrategyEvaluation[] = []
-
-    const lastRuleTriggerTimes: Map<number, number> = new Map()
+    const startTime = now - (executionLimit * intervalMs)
 
     // Run evaluations for each cycle
-    for (let i = 0; i < testCycles; i++) {
+    for (let i = 0; i < executionLimit; i++) {
       const until = startTime + (i * intervalMs)
       const result = await this.evaluateStrategy(strategy, symbol, until);
 
@@ -546,12 +565,117 @@ export class StrategyRunner {
         });
       }
 
+      // Get price at the evaluation timestamp
+      const priceUSD = await this.getPriceAt(symbol, until);
+
       // Update last trigger times for rules
       result.triggeredRules.forEach((ruleEval) => {
+
+        ruleEval.actions.forEach((action) => {
+          if(!priceUSD) {
+            return;
+          }
+          const openOrderCount = exchangeService.getOpenOrdersByPair(symbol).length;
+
+          if (openOrderCount < (strategy.executionOptions?.maximumOpenPositions || Infinity)) {
+
+            let orderType: OrderType;
+            let side: OrderSide;
+            let triggerDistance: number | undefined = undefined;
+            let triggerPrice: number | undefined = undefined;
+
+            switch (action.action) {
+              case "buy":
+              case "buy-order":
+              case "buy-limit":
+                side = "buy";
+                break;
+              case "sell":
+              case "sell-order":
+              case "sell-limit":
+                side = "sell";
+                break;
+            }
+
+            if (!side) {
+              return;
+            }
+
+            switch (action.options?.orderType) {
+              case "Stop Loss":
+                orderType = "stop-loss";
+                triggerDistance = -(action.options?.distanceUnit === '%' ? action.options?.distance * 0.01 * priceUSD! : action.options?.distance);
+                break;
+              case "Take Profit":
+                orderType = "take-profit";
+                triggerDistance = action.options?.distanceUnit === '%' ? action.options?.distance * 0.01 * priceUSD! : action.options?.distance;
+                break;
+              case "Trailing Stop":
+                orderType = "trailing-stop";
+                triggerDistance = -(action.options?.distanceUnit === '%' ? action.options?.distance * 0.01 * priceUSD! : action.options?.distance);
+                break;
+              default:
+                if(action.action === "buy-limit" || action.action === "sell-limit") {
+                  orderType = "limit";
+                  triggerPrice = -(action.options?.unitLimit === '%' ? action.options?.unitLimit * 0.01 * priceUSD! : action.options?.limitPrice);
+                } else {
+                  orderType = "market";
+                }
+                break;
+            }
+
+            let priceSL: number | undefined = undefined;
+            let priceTP: number | undefined = undefined;
+            
+            if (side && action.options?.stopLoss) {
+              priceSL = side === "buy"
+                ? priceUSD - (action.options.stopLoss * priceUSD / 100)
+                : priceUSD + (action.options.stopLoss * priceUSD / 100);
+
+            }
+            if (side && action.options?.takeProfit) {
+              priceTP = side === "buy"
+                ? priceUSD + (action.options.takeProfit * priceUSD / 100)
+                : priceUSD - (action.options.takeProfit * priceUSD / 100);
+            }
+
+            if(triggerDistance) {
+              triggerPrice = side === "buy"
+                ? priceUSD + triggerDistance
+                : priceUSD - triggerDistance
+            }
+
+            let volume = action.options?.volume ? parseFloat(action.options.volume) / priceUSD : 0;
+            if (action.options?.volumeType === '%' && priceUSD) {
+              const accountBalance = exchangeService.getAccountBalance('USD');
+              const positionValue = (volume / 100) * accountBalance;
+              volume = positionValue / priceUSD;
+            }
+
+            const orderParams: AddOrderParams = {
+              orderType: orderType,
+              type: side,
+              volume: volume,
+              pair: symbol,
+              price: triggerPrice,
+              leverage: action.options?.leverage ? parseInt(action.options.leverage) : undefined,
+              priceSL: priceSL,
+              priceTP: priceTP,
+              trailingDistance: action.options?.trailingStop,
+            }
+            exchangeService.addOrder(orderParams);
+          }
+
+        });
+
         lastRuleTriggerTimes.set(ruleEval.ruleIndex, until)
       });
 
-      results.push(result)
+      results.push(result);
+
+      // simulate market movements in the order service
+      exchangeService.updateOrders(until, priceUSD!, symbol);
+
     }
 
     return results
