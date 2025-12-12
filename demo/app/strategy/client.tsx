@@ -14,6 +14,7 @@ import { agentService, supportedModels } from "../../lib/agent-service"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
 import { StrategyBuilder, CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig} from "@palabola86/trade-strategy-builder"
+import { AnalysisPanel } from "@/components/analysis-panel"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -138,6 +139,9 @@ export function StrategyPageClient({
   // Strategy deploy state
   const [showDeployDialog, setShowDeployDialog] = useState(false)
   const [lastSavedStrategyId, setLastSavedStrategyId] = useState<string | null>(null)
+
+  // Current strategy state for onStrategyChange callback
+  const [currentStrategy, setCurrentStrategy] = useState<StrategyTemplate | null>(null)
 
   const customBlockConfigs: Record<BlockType, BlockConfig> = {
     // Example custom block configuration
@@ -297,6 +301,13 @@ export function StrategyPageClient({
     const savedStrategy = saveStrategyToStorage(strategy)
     setLastSavedStrategyId(savedStrategy.strategyId || null)
     setShowDeployDialog(true)
+  }, [])
+
+  // Handle strategy changes from the builder
+  const handleStrategyChange = useCallback((strategy: StrategyTemplate | null) => {
+    setCurrentStrategy(strategy)
+    // You can add additional logic here, like logging or validation
+    console.log('Strategy updated:', strategy)
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI
@@ -514,23 +525,35 @@ export function StrategyPageClient({
         </Dialog>
       </div>
 
-      <div className="flex gap-4 w-full">
-      <StrategyBuilder
-      configOptions={{
-          ...blockConfigs,
-          ...customBlockConfigs
-        }}
-        key={builderKey}
-        initialStrategy={initialStrategy}
-        candleOptions={candleOptions}
-        indicatorOptions={indicatorOptions}
-        unitOptions={unitOptions}
-        predefinedStrategies={predefinedStrategies}
-        onSave={handleSave}
-        themeOverride={computedTheme}
-        supportedAIModels={supportedModels}
-        callAIFunction={handleCallAI}
-      />
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 w-full">
+        <div className="2xl:col-span-1">
+          <StrategyBuilder
+            configOptions={{
+              ...blockConfigs,
+              ...customBlockConfigs
+            }}
+            key={builderKey}
+            initialStrategy={initialStrategy}
+            candleOptions={candleOptions}
+            indicatorOptions={indicatorOptions}
+            unitOptions={unitOptions}
+            predefinedStrategies={predefinedStrategies}
+            onSave={handleSave}
+            onStrategyChange={handleStrategyChange}
+            themeOverride={computedTheme}
+            supportedAIModels={supportedModels}
+            callAIFunction={handleCallAI}
+          />
+        </div>
+        <div>
+          {/* Analysis Panel */}
+          <AnalysisPanel 
+            selectedStrategy={currentStrategy}
+            layout="column"
+            showEmptyState={true}
+            emptyStateMessage="Build a strategy to run analysis"
+          />
+        </div>
       </div>
     </div>
   )

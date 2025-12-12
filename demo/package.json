@@ -14,7 +14,7 @@
     "@dnd-kit/utilities": "latest",
     "@hookform/resolvers": "^3.10.0",
     "@nestjs/common": "latest",
-    "@palabola86/trade-strategy-builder": "1.1.0",
+    "@palabola86/trade-strategy-builder": "1.1.1",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "latest",
     "@radix-ui/react-aspect-ratio": "1.1.1",
