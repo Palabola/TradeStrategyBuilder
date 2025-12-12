@@ -32,7 +32,7 @@ import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
-import { BlockCategory, BlockConfig, BlockType, ConditionBlockType, ActionBlockType, CustomTheme, IndicatorOption, Parameter, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate } from "../types"
+import { BlockCategory, BlockConfig, BlockType, ConditionBlockType, ActionBlockType, CustomTheme, IndicatorOption, Parameter, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate, StrategyBuilderResult } from "../types"
 
 interface CanvasItem {
   id: string
@@ -46,12 +46,6 @@ interface RuleGroup {
   name: string
   conditionItems: CanvasItem[]
   actionItems: CanvasItem[]
-}
-
-interface StrategyJsonResult {
-  success: boolean
-  data?: any
-  errors?: string[]
 }
 
 /**
@@ -221,7 +215,7 @@ export function StrategyBuilder({
     groupId: string
     category: BlockCategory
   } | null>(null)
-  const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(initialStrategy?.strategyId || null)
+  const [currentStrategyId, setCurrentStrategyId] = useState<string | undefined>(initialStrategy?.strategyId || undefined)
 
   // AI Builder state
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
@@ -272,7 +266,7 @@ export function StrategyBuilder({
 
   useEffect(() => {
     if (initialStrategy) {
-      setCurrentStrategyId(initialStrategy.strategyId || null)
+      setCurrentStrategyId(initialStrategy.strategyId || undefined)
       loadStrategyFromJson(initialStrategy)
     }
   }, [initialStrategy, loadStrategyFromJson])
@@ -452,7 +446,7 @@ export function StrategyBuilder({
       return
     }
 
-    const strategyToSave = {
+    const strategyToSave: StrategyTemplate = {
       ...result.data!,
       strategyId: currentStrategyId || result.data!.strategyId,
     }
@@ -464,7 +458,7 @@ export function StrategyBuilder({
     setCurrentStrategyId(strategyToSave.strategyId)
   }
 
-  const generateStrategyJson = (): StrategyJsonResult => {
+  const generateStrategyJson = (): StrategyBuilderResult => {
     const errors: string[] = []
 
     if (!strategyName || strategyName.trim() === "") {

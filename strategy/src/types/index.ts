@@ -126,3 +126,9 @@ export interface PredefinedStrategyTemplate {
   description: string
   strategy: StrategyTemplate
 }
+
+export interface StrategyBuilderResult {
+  success: boolean
+  data?: StrategyTemplate
+  errors?: string[]
+}
