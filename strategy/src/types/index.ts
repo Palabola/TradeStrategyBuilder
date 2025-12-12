@@ -53,6 +53,7 @@ export interface StrategyBuilderProps {
   configOptions?: Record<BlockType, BlockConfig>
   predefinedStrategies?: PredefinedStrategyTemplate[]
   onSave?: (strategy: StrategyTemplate) => void
+  onStrategyChange?: (strategy: StrategyTemplate | null) => void
   themeOverride?: CustomTheme
   supportedAIModels?: string[]
   callAIFunction?: ( systemPrompt: string, userPrompts: string[], model: string) => Promise<string>
@@ -89,6 +90,7 @@ export interface ConditionType {
     indicator2?: string
     timeframe2?: string
     value?: number
+    [key: string]: any
   }
 }
 

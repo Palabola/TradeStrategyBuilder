@@ -32,7 +32,7 @@ import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
-import { BlockCategory, BlockConfig, BlockType, ConditionBlockType, ActionBlockType, CustomTheme, IndicatorOption, Parameter, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate, StrategyBuilderResult } from "../types"
+import { BlockCategory, BlockConfig, BlockType, ConditionBlockType, ActionBlockType, CustomTheme, IndicatorOption, Parameter, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate, StrategyBuilderResult, ActionType, ConditionType } from "../types"
 
 interface CanvasItem {
   id: string
@@ -170,6 +170,7 @@ export function StrategyBuilder({
   configOptions = blockConfigs,
   predefinedStrategies = [],
   onSave,
+  onStrategyChange,
   themeOverride,
   supportedAIModels = ['grok'],
   callAIFunction,
@@ -270,6 +271,23 @@ export function StrategyBuilder({
       loadStrategyFromJson(initialStrategy)
     }
   }, [initialStrategy, loadStrategyFromJson])
+
+  // Call onStrategyChange whenever strategy state changes
+  useEffect(() => {
+    if (onStrategyChange) {
+      const result = generateStrategyJson()
+      onStrategyChange(result.success ? result.data! : null)
+    }
+  }, [
+    onStrategyChange,
+    strategyName,
+    selectedPairs,
+    ruleGroups,
+    runIntervalMinutes,
+    maximumExecuteCount,
+    intervalBetweenExecutionsMinutes,
+    maximumOpenPositions,
+  ])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -531,14 +549,14 @@ export function StrategyBuilder({
     }
 
     const rules = ruleGroups.map((group) => {
-      const conditions = group.conditionItems.map((item, itemIndex) => {
+      const conditions: ConditionType[] = group.conditionItems.map((item, itemIndex) => {
         const blockLabel = `${group.name}, Condition ${itemIndex + 1} (${item.config.label})`
-        return processItem(item, itemIndex, blockLabel, "type")
+        return processItem(item, itemIndex, blockLabel, "type") as ConditionType
       })
 
-      const actions = group.actionItems.map((item, itemIndex) => {
+      const actions: ActionType[] = group.actionItems.map((item, itemIndex) => {
         const blockLabel = `${group.name}, Action ${itemIndex + 1} (${item.config.label})`
-        return processItem(item, itemIndex, blockLabel, "action")
+        return processItem(item, itemIndex, blockLabel, "action") as ActionType
       })
 
       return {
@@ -552,7 +570,7 @@ export function StrategyBuilder({
       return { success: false, errors }
     }
 
-    const strategyJson = {
+    const strategyJson: StrategyTemplate = {
       strategyId: crypto.randomUUID(),
       strategyName: strategyName.trim(),
       symbols: selectedPairs,
