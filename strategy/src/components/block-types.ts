@@ -1,5 +1,4 @@
 import {
-  type LucideIcon,
   TrendingUp,
   TrendingDown,
   ChevronUp,
@@ -12,30 +11,7 @@ import {
   ShoppingCart,
   Banknote,
 } from "lucide-react"
-import { ActionBlockType, BlockType, ConditionBlockType, IndicatorOption } from "../types"
-
-export type BlockCategory = "condition" | "action"
-
-export interface BlockConfig {
-  type: BlockType
-  label: string
-  description: string
-  icon: LucideIcon
-  color: string
-  bgColor: string
-  category: BlockCategory
-  parameters: Parameter[]
-}
-
-export interface Parameter {
-  name: string
-  type: "select" | "number" | "text" | "textarea"
-  label: string
-  options?: string[]
-  indicatorOptions?: IndicatorOption[]
-  placeholder?: string
-  default?: string | number
-}
+import { BlockConfig, BlockType, IndicatorOption } from "../types"
 
 export const tradingPairs = ["BTC/USD", "ETH/USD", "SOL/USD", "DOGE/USD", "XRP/USD", "ADA/USD"]
 
@@ -76,286 +52,434 @@ export const runIntervalOptions = [
 
 export const blockConfigs: Record<BlockType, BlockConfig> = {
   "increased-by": {
-    type: "increased-by",
     label: "Increased By",
+    labelPrefixFunction: (params) => `${params.indicator1} (${params.timeframe1})`,
+    labelPostfixFunction: (params) => `${params.value}%`,
     description: "Trigger when indicator increases by value",
+    promptDescription: "indicator1 in timeframe1 has increased by value% over timeframe1",
     icon: TrendingUp,
     color: "text-blue-500",
     bgColor: "bg-blue-500/10 border-blue-500/30",
     category: "condition",
     parameters: [
-      {
-        name: "indicator1",
-        type: "select",
-        label: "Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "Price",
-      },
-      {
-        name: "timeframe1",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
-      {
-        name: "value",
-        type: "number",
-        label: "Percentage (%)",
-        placeholder: "5",
-        default: 5,
-      },
+      [
+        {
+          name: "indicator1",
+          type: "indicator",
+          label: "Indicator",
+          indicatorOptions: indicatorOptions,
+          default: "Price",
+          required: true,
+        },
+        {
+          name: "timeframe1",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "value",
+          type: "number",
+          label: "Percentage (%)",
+          placeholder: "5",
+          default: 5,
+          required: true,
+        },
+      ],
     ],
   },
   "decreased-by": {
-    type: "decreased-by",
     label: "Decreased By",
+    labelPrefixFunction: (params) => `${params.indicator1} (${params.timeframe1})`,
+    labelPostfixFunction: (params) => `${params.value}%`,
     description: "Trigger when indicator decreases by value",
+    promptDescription: "indicator1 in timeframe1 has decreased by value% over timeframe1",
     icon: TrendingDown,
     color: "text-orange-500",
     bgColor: "bg-orange-500/10 border-orange-500/30",
     category: "condition",
     parameters: [
-      {
-        name: "indicator1",
-        type: "select",
-        label: "Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "Price",
-      },
-      {
-        name: "timeframe1",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
-      {
-        name: "value",
-        type: "number",
-        label: "Percentage (%)",
-        placeholder: "5",
-        default: 5,
-      },
+      [
+        {
+          name: "indicator1",
+          type: "indicator",
+          label: "Indicator",
+          indicatorOptions: indicatorOptions,
+          default: "Price",
+          required: true,
+        },
+        {
+          name: "timeframe1",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "value",
+          type: "number",
+          label: "Percentage (%)",
+          placeholder: "5",
+          default: 5,
+          required: true,
+        },
+      ],
     ],
   },
   "greater-than": {
-    type: "greater-than",
     label: "Greater Than",
+    labelPrefixFunction: (params) => `${params.indicator1} (${params.timeframe1})`,
+    labelPostfixFunction: (params) => params.indicator2 === "Value" ? `${params.value}` : `${params.indicator2} (${params.timeframe2})`,
     description: "Trigger when indicator exceeds another indicator",
+    promptDescription: "indicator1 in timeframe1 is greater than indicator2 in timeframe2, or greater than 'value' if indicator2 is 'Value'",
     icon: ChevronUp,
     color: "text-violet-500",
     bgColor: "bg-violet-500/10 border-violet-500/30",
     category: "condition",
     parameters: [
-      {
-        name: "indicator1",
-        type: "select",
-        label: "Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "EMA(20)",
-      },
-      {
-        name: "timeframe1",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
-      {
-        name: "indicator2",
-        type: "select",
-        label: "Target Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "MA",
-      },
-      {
-        name: "timeframe2",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
+      [
+        {
+          name: "indicator1",
+          type: "indicator",
+          label: "Indicator",
+          indicatorOptions: indicatorOptions,
+          default: "EMA(20)",
+          required: true,
+        },
+        {
+          name: "timeframe1",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "conditionLabel",
+          type: "label",
+          label: "Greater Than",
+        },
+      ],
+      [
+        {
+          name: "indicator2",
+          type: "indicator",
+          label: "Target Indicator",
+          indicatorOptions: indicatorOptions,
+          filterByIndicator: "indicator1",
+          default: "MA",
+          required: true,
+        },
+        {
+          name: "timeframe2",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          hideWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+        {
+          name: "value",
+          type: "number",
+          label: "Value",
+          placeholder: "Enter value",
+          default: 0,
+          showWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+      ],
     ],
   },
   "lower-than": {
-    type: "lower-than",
     label: "Lower Than",
+    labelPrefixFunction: (params) => `${params.indicator1} (${params.timeframe1})`,
+    labelPostfixFunction: (params) => params.indicator2 === "Value" ? `${params.value}` : `${params.indicator2} (${params.timeframe2})`,
     description: "Trigger when indicator falls below another indicator",
+    promptDescription: "indicator1 in timeframe1 is lower than indicator2 in timeframe2, or lower than 'value' if indicator2 is 'Value'",
     icon: ChevronDown,
     color: "text-pink-500",
     bgColor: "bg-pink-500/10 border-pink-500/30",
     category: "condition",
     parameters: [
-      {
-        name: "indicator1",
-        type: "select",
-        label: "Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "EMA(20)",
-      },
-      {
-        name: "timeframe1",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
-      {
-        name: "indicator2",
-        type: "select",
-        label: "Target Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "MA",
-      },
-      {
-        name: "timeframe2",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
+      [
+        {
+          name: "indicator1",
+          type: "indicator",
+          label: "Indicator",
+          indicatorOptions: indicatorOptions,
+          default: "EMA(20)",
+          required: true,
+        },
+        {
+          name: "timeframe1",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "conditionLabel",
+          type: "label",
+          label: "Lower Than",
+        },
+      ],
+      [
+        {
+          name: "indicator2",
+          type: "indicator",
+          label: "Target Indicator",
+          indicatorOptions: indicatorOptions,
+          filterByIndicator: "indicator1",
+          default: "MA",
+          required: true,
+        },
+        {
+          name: "timeframe2",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          hideWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+        {
+          name: "value",
+          type: "number",
+          label: "Value",
+          placeholder: "Enter value",
+          default: 0,
+          showWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+      ],
     ],
   },
   "crossing-above": {
-    type: "crossing-above",
     label: "Crossing Above",
+    labelPrefixFunction: (params) => `${params.indicator1} (${params.timeframe1})`,
+    labelPostfixFunction: (params) => params.indicator2 === "Value" ? `${params.value}` : `${params.indicator2} (${params.timeframe2})`,
     description: "Trigger when indicator crosses above another indicator",
+    promptDescription: "indicator1 in timeframe1 has crossed above indicator2 in timeframe2, or crossed above 'value' if indicator2 is 'Value'",
     icon: ArrowUpRight,
     color: "text-cyan-500",
     bgColor: "bg-cyan-500/10 border-cyan-500/30",
     category: "condition",
     parameters: [
-      {
-        name: "indicator1",
-        type: "select",
-        label: "Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "Price",
-      },
-      {
-        name: "timeframe1",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
-      {
-        name: "indicator2",
-        type: "select",
-        label: "Target Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "MA",
-      },
-      {
-        name: "timeframe2",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
+      [
+        {
+          name: "indicator1",
+          type: "indicator",
+          label: "Indicator",
+          indicatorOptions: indicatorOptions,
+          default: "Price",
+          required: true,
+        },
+        {
+          name: "timeframe1",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "conditionLabel",
+          type: "label",
+          label: "Crossing Above",
+        },
+      ],
+      [
+        {
+          name: "indicator2",
+          type: "indicator",
+          label: "Target Indicator",
+          indicatorOptions: indicatorOptions,
+          filterByIndicator: "indicator1",
+          default: "MA",
+          required: true,
+        },
+        {
+          name: "timeframe2",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          hideWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+        {
+          name: "value",
+          type: "number",
+          label: "Value",
+          placeholder: "Enter value",
+          default: 0,
+          showWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+      ],
     ],
   },
   "crossing-below": {
-    type: "crossing-below",
     label: "Crossing Below",
+    labelPrefixFunction: (params) => `${params.indicator1} (${params.timeframe1})`,
+    labelPostfixFunction: (params) => params.indicator2 === "Value" ? `${params.value}` : `${params.indicator2} (${params.timeframe2})`,
     description: "Trigger when indicator crosses below another indicator",
+    promptDescription: "indicator1 in timeframe1 has crossed below indicator2 in timeframe2, or crossed below 'value' if indicator2 is 'Value'",
     icon: ArrowDownRight,
     color: "text-teal-500",
     bgColor: "bg-teal-500/10 border-teal-500/30",
     category: "condition",
     parameters: [
-      {
-        name: "indicator1",
-        type: "select",
-        label: "Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "Price",
-      },
-      {
-        name: "timeframe1",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
-      {
-        name: "indicator2",
-        type: "select",
-        label: "Target Indicator",
-        indicatorOptions: indicatorOptions,
-        default: "MA",
-      },
-      {
-        name: "timeframe2",
-        type: "select",
-        label: "Candles",
-        options: candleOptions,
-        default: "15min",
-      },
+      [
+        {
+          name: "indicator1",
+          type: "indicator",
+          label: "Indicator",
+          indicatorOptions: indicatorOptions,
+          default: "Price",
+          required: true,
+        },
+        {
+          name: "timeframe1",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "conditionLabel",
+          type: "label",
+          label: "Crossing Below",
+        },
+      ],
+      [
+        {
+          name: "indicator2",
+          type: "indicator",
+          label: "Target Indicator",
+          indicatorOptions: indicatorOptions,
+          filterByIndicator: "indicator1",
+          default: "MA",
+          required: true,
+        },
+        {
+          name: "timeframe2",
+          type: "select",
+          label: "Candles",
+          options: candleOptions,
+          default: "15min",
+          hideWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+        {
+          name: "value",
+          type: "number",
+          label: "Value",
+          placeholder: "Enter value",
+          default: 0,
+          showWhen: { param: "indicator2", equals: "Value" },
+          required: true,
+        },
+      ],
     ],
   },
   "open-position": {
-    type: "open-position",
-    label: "Open Position",
+    label: "Open",
+    labelPostfixFunction: (params) => {
+      let result = `${params.side} ${params.amount} ${params.unit}`
+      if (params.leverage && params.leverage !== "No" && params.leverage !== "1x") {
+        result += ` @ ${params.leverage}`
+      }
+      if (Number(params.stopLoss) > 0 || Number(params.takeProfit) > 0) {
+        if (Number(params.stopLoss) > 0) result += ` SL:${params.stopLoss}%`
+        if (Number(params.takeProfit) > 0) result += ` TP:${params.takeProfit}%`
+      }
+      return result
+    },
     description: "Open a new trading position",
+    promptDescription: "Opens a new 'side' position for 'amount' of the currency in 'unit' using 'leverage'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.",
     icon: DollarSign,
     color: "text-green-500",
     bgColor: "bg-green-500/10 border-green-500/30",
     category: "action",
     parameters: [
-      {
-        name: "side",
-        type: "select",
-        label: "Side",
-        options: sideOptions,
-        default: "LONG",
-      },
-      {
-        name: "amount",
-        type: "number",
-        label: "Amount",
-        placeholder: "100",
-        default: 100,
-      },
-      {
-        name: "unit",
-        type: "select",
-        label: "Unit",
-        options: unitOptions,
-        default: "USD",
-      },
-      {
-        name: "leverage",
-        type: "select",
-        label: "Leverage",
-        options: leverageOptions.map(l => l.label),
-        default: "1x",
-      },
-      {
-        name: "stopLoss",
-        type: "number",
-        label: "Stop Loss (%)",
-        default: 0,
-      },
-      {
-        name: "takeProfit",
-        type: "number",
-        label: "Take Profit (%)",
-        default: 0,
-      },
-       {
-        name: "trailingStop",
-        type: "number",
-        label: "Trailing Stop (%)",
-        default: 0,
-      },
+      [
+        {
+          name: "side",
+          type: "select",
+          label: "Side",
+          options: sideOptions,
+          default: "LONG",
+          required: true,
+        },
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "USD",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "leverage",
+          type: "select",
+          label: "Leverage",
+          options: leverageOptions.map(l => l.label),
+          default: "1x",
+        },
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+        {
+          name: "trailingStop",
+          type: "number",
+          label: "Trailing Stop (%)",
+          default: 0,
+        },
+      ],
     ],
   },
   "close-position": {
-    type: "close-position",
-    label: "Close Positions",
+    label: "Close All Positions",
     description: "Close all open positions",
+    promptDescription: "Closes all positions. No additional fields required.",
     icon: LogOut,
     color: "text-red-500",
     bgColor: "bg-red-500/10 border-red-500/30",
@@ -363,130 +487,320 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
     parameters: [],
   },
   "buy": {
-    type: "buy",
     label: "Buy",
-    description: "Execute a buy order",
+    labelPostfixFunction: (params) => {
+      let result = `${params.amount} ${params.unit}`
+      if (Number(params.stopLoss) > 0 || Number(params.takeProfit) > 0) {
+        if (Number(params.stopLoss) > 0) result += ` SL:${params.stopLoss}%`
+        if (Number(params.takeProfit) > 0) result += ` TP:${params.takeProfit}%`
+      }
+      return result
+    },
+    description: "Execute a Market buy",
+    promptDescription: "Buy 'amount' of the currency in 'unit'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.",
     icon: ShoppingCart,
     color: "text-green-500",
     bgColor: "bg-green-500/10 border-green-500/30",
     category: "action",
     parameters: [
-      {
-        name: "amount",
-        type: "number",
-        label: "Amount",
-        placeholder: "100",
-        default: 100,
-      },
-      {
-        name: "unit",
-        type: "select",
-        label: "Unit",
-        options: unitOptions,
-        default: "USD",
-      },
-      {
-        name: "stopLoss",
-        type: "number",
-        label: "Stop Loss (%)",
-        default: 0,
-      },
-      {
-        name: "takeProfit",
-        type: "number",
-        label: "Take Profit (%)",
-        default: 0,
-      },
-      {
-        name: "trailingStop",
-        type: "number",
-        label: "Trailing Stop (%)",
-        default: 0,
-      },
+      [
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "USD",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+        {
+          name: "trailingStop",
+          type: "number",
+          label: "Trailing Stop (%)",
+          default: 0,
+        },
+      ],
     ],
   },
   "sell": {
-    type: "sell",
     label: "Sell",
-    description: "Execute a sell order",
+    labelPostfixFunction: (params) => {
+      let result = `${params.amount} ${params.unit}`
+      if (Number(params.stopLoss) > 0 || Number(params.takeProfit) > 0) {
+        if (Number(params.stopLoss) > 0) result += ` SL:${params.stopLoss}%`
+        if (Number(params.takeProfit) > 0) result += ` TP:${params.takeProfit}%`
+      }
+      return result
+    },
+    description: "Execute a Market sell",
+    promptDescription: "Sell 'amount' of the currency in 'unit'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.",
     icon: Banknote,
     color: "text-red-500",
     bgColor: "bg-red-500/10 border-red-500/30",
     category: "action",
     parameters: [
-      {
-        name: "amount",
-        type: "number",
-        label: "Amount",
-        placeholder: "100",
-        default: 100,
-      },
-      {
-        name: "unit",
-        type: "select",
-        label: "Unit",
-        options: unitOptions,
-        default: "USD",
-      },
-      {
-        name: "stopLoss",
-        type: "number",
-        label: "Stop Loss (%)",
-        default: 0,
-      },
-      {
-        name: "takeProfit",
-        type: "number",
-        label: "Take Profit (%)",
-        default: 0,
-      },
-      {
-        name: "trailingStop",
-        type: "number",
-        label: "Trailing Stop (%)",
-        default: 0,
-      },
+      [
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "USD",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+        {
+          name: "trailingStop",
+          type: "number",
+          label: "Trailing Stop (%)",
+          default: 0,
+        },
+      ],
+    ],
+  },
+  "buy-order": {
+    label: "Buy Order",
+    labelPostfixFunction: (params) => {
+      let result = `${params.amount} ${params.unit}`
+      if (Number(params.stopLoss) > 0 || Number(params.takeProfit) > 0) {
+        if (Number(params.stopLoss) > 0) result += ` SL:${params.stopLoss}%`
+        if (Number(params.takeProfit) > 0) result += ` TP:${params.takeProfit}%`
+      }
+      return result
+    },
+    description: "Place a market buy order",
+    promptDescription: "Places a buy order with specified order type, distance, and amount. Order types include Stop Loss, Take Profit, and Trailing Stop.",
+    icon: ShoppingCart,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10 border-green-500/30",
+    category: "action",
+    parameters: [
+      [
+        {
+          name: "orderType",
+          type: "select",
+          label: "Order Type",
+          options: [
+            "Stop Loss", "Take Profit", "Trailing Stop"
+          ],
+          default: "Stop Loss",
+          required: true,
+        },
+        {
+          name: "distance",
+          type: "number",
+          label: "Distance",
+          default: 0.1,
+          required: true,
+        },
+        {
+          name: "distanceUnit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "%",
+          required: true,
+        },
+      ],
+      [ 
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "USD",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+        {
+          name: "trailingStop",
+          type: "number",
+          label: "Trailing Stop (%)",
+          default: 0,
+        },
+      ],
+    ],
+  },
+  "sell-order": {
+    label: "Sell Order",
+    labelPostfixFunction: (params) => {
+      let result = `${params.amount} ${params.unit}`
+      if (Number(params.stopLoss) > 0 || Number(params.takeProfit) > 0) {
+        if (Number(params.stopLoss) > 0) result += ` SL:${params.stopLoss}%`
+        if (Number(params.takeProfit) > 0) result += ` TP:${params.takeProfit}%`
+      }
+      return result
+    },
+    description: "Place a market sell order",
+    promptDescription: "Places a sell order with specified order type, distance, and amount. Order types include Stop Loss, Take Profit, and Trailing Stop.",
+    icon: Banknote,
+    color: "text-red-500",
+    bgColor: "bg-red-500/10 border-red-500/30",
+    category: "action",
+    parameters: [
+       [
+        {
+          name: "orderType",
+          type: "select",
+          label: "Order Type",
+          options: [
+            "Stop Loss", "Take Profit", "Trailing Stop"
+          ],
+          default: "Stop Loss",
+          required: true,
+        },
+        {
+          name: "distance",
+          type: "number",
+          label: "Distance",
+          default: 0.1,
+          required: true,
+        },
+        {
+          name: "distanceUnit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "%",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: unitOptions,
+          default: "USD",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+        {
+          name: "trailingStop",
+          type: "number",
+          label: "Trailing Stop (%)",
+          default: 0,
+        },
+      ],
     ],
   },
   "notify-me": {
-    type: "notify-me",
     label: "Notify Me",
+    labelPostfixFunction: (params) => `via ${params.channel}`,
     description: "Send a notification when conditions are met",
+    promptDescription: "Sends a notification to 'channel' with content 'message'.",
     icon: Bell,
     color: "text-amber-500",
     bgColor: "bg-amber-500/10 border-amber-500/30",
     category: "action",
     parameters: [
-      {
-        name: "channel",
-        type: "select",
-        label: "Channel",
-        options: channelOptions,
-        default: "Notification",
-      },
-      {
-        name: "message",
-        type: "text",
-        label: "Message",
-        placeholder: "Enter notification message",
-        default: "Condition triggered!",
-      },
+      [
+        {
+          name: "channel",
+          type: "select",
+          label: "Channel",
+          options: channelOptions,
+          default: "Notification",
+          required: true,
+        },
+      ],
+      [
+        {
+          name: "message",
+          type: "textarea",
+          label: "Message",
+          placeholder: "Enter notification message",
+          default: "Condition triggered!",
+          required: true,
+        },
+      ],
     ],
   },
 }
-
-export const conditionBlocks: ConditionBlockType[] = [
-  "increased-by",
-  "decreased-by",
-  "greater-than",
-  "lower-than",
-  "crossing-above",
-  "crossing-below",
-]
-
-export const actionBlocks: ActionBlockType[] = ["open-position", "close-position", "buy", "sell", "notify-me"]
-
-export const availableBlocks: BlockType[] = [...conditionBlocks, ...actionBlocks]
 
 export const STATIC_SYSTEM_PROMPT_V1 = (
   tradeableSymbols: string[],
@@ -494,7 +808,17 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
   candleLengths: string[],
   tradeUnits: string[],
   leverageValues: string[],
+  configBlocks: Record<BlockType, BlockConfig>,
 ) => {
+  // Generate dynamic lists from configBlocks
+  const conditionBlocks = Object.entries(configBlocks)
+    .filter(([_, config]) => config.category === "condition")
+    .map(([_, config], index) => `${index + 1}. ${config.label}: ${config.promptDescription}`)
+
+  const actionBlocks = Object.entries(configBlocks)
+    .filter(([_, config]) => config.category === "action")
+    .map(([_, config], index) => `${index + 1}. ${config.label}: ${config.promptDescription}`)
+
   return `
   #### Persona and role:
   - You are an expert cryptocurrency trading strategy developer. 
@@ -511,13 +835,9 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
    - Leverage Values: ${leverageValues.join(", ")}
    - Execution Options: ${JSON.stringify(runIntervalOptions.map(o => o.value))}
    - Available trade rules: 
-      1. Increased By: usage the indicator has increased by a certain percentage over a specified timeframe.
-      2. Decreased By: usage the indicator has decreased by a certain percentage over a specified timeframe.
-      3. Crossed Above: usage the indicator has crossed above another indicator or value.
-      4. Crossed Below: usage the indicator has crossed below another indicator or value.
-      5. Greater Than: usage the indicator is greater than a certain value or another indicator.
-      6. Less Than: usage the indicator is less than a certain value or another indicator.
-   - Available actions: Open Position, Close Position, Buy, Sell, Notify Me
+${conditionBlocks.map(rule => `      ${rule}`).join('\n')}
+   - Available actions:
+${actionBlocks.map(rule => `      ${rule}`).join('\n')}
 
    ### Strategy building guidelines:
    - Build strategies by combining multiple rules and actions into a cohesive plan.
@@ -551,7 +871,7 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
        }[]
        actions: {
          index: number
-         action: "OPEN" | "CLOSE" |"BUY" | "SELL" | "NOTIFY"
+         action: "open" | "close" | "buy" | "sell" | "notify-me"
          options: {
            side?: "LONG" | "SHORT"
            amount?: number
@@ -582,11 +902,11 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
     - Never use the fields not listed for each condition type!
 
     - Rules for each action:
-        1 "OPEN": Opens a new 'side' position for 'amount' of the currency in 'unit' using 'leverage'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
-        2 "CLOSE": Closes All positions. No additional fields required.
-        3 "BUY": Buy 'amount' of the currency in 'unit'.
-        4 "SELL": Sell 'amount' of the currency in 'unit'.
-        5 "NOTIFY": Sends a notification to 'channel' with content 'message'.
+        1 "open": Opens a new 'side' position for 'amount' of the currency in 'unit' using 'leverage'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
+        2 "close": Closes All positions. No additional fields required.
+        3 "buy": Buy 'amount' of the currency in 'unit'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
+        4 "sell": Sell 'amount' of the currency in 'unit'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
+        5 "notify-me": Sends a notification to 'channel' with content 'message'.
     - 'symbols' is an array of 'Tradeable Symbols' should never be empty!
     - Never use any other action types!
     - Never use the fields not listed for each action type!

@@ -6,15 +6,15 @@ import { useState } from "react"
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CanvasBlock } from "./canvas-block"
-import type { BlockConfig, BlockCategory } from "./block-types"
 import { Plus, Pencil, Check, X, ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { CustomTheme } from "../types"
+import { BlockCategory, BlockConfig, BlockType, CustomTheme } from "../types"
 
 interface CanvasItem {
   id: string
+  blockType: BlockType
   config: BlockConfig
   values: Record<string, string | number>
 }
@@ -172,6 +172,7 @@ export function RuleDropZone({
                           <CanvasBlock
                             key={item.id}
                             id={item.id}
+                            blockType={item.blockType}
                             config={item.config}
                             values={item.values}
                             onRemove={() => onRemoveBlock(item.id, "condition")}
@@ -228,6 +229,7 @@ export function RuleDropZone({
                           <CanvasBlock
                             key={item.id}
                             id={item.id}
+                            blockType={item.blockType}
                             config={item.config}
                             values={item.values}
                             onRemove={() => onRemoveBlock(item.id, "action")}

@@ -1,3 +1,44 @@
+import { LucideIcon } from "lucide-react"
+  
+export interface Parameter {
+  /**
+   * The name of the parameter
+   * Used for identifying the parameter in the strategy
+   * Must be unique within the block
+   */
+  name: string
+  type: "select" | "number" | "text" | "textarea" | "label" | "indicator"
+  label: string
+  /** For "select" type: provide available options */
+  options?: string[]
+  /** For "indicator" type: provide available indicator options */
+  indicatorOptions?: IndicatorOption[]
+  placeholder?: string
+  default?: string | number
+  /** Whether this parameter is required for validation */
+  required?: boolean
+  /** For "indicator" type: filter options by the category of another indicator parameter */
+  filterByIndicator?: string
+  /** For conditional rendering: only show this parameter when another parameter equals a specific value */
+  showWhen?: { param: string; equals: string | number }
+  /** For conditional rendering: only show this parameter when another parameter does NOT equal a specific value */
+  hideWhen?: { param: string; equals: string | number }
+}
+
+export type BlockCategory = "condition" | "action"
+
+export interface BlockConfig {
+  label: string
+  description: string
+  promptDescription?: string
+  labelPrefixFunction?: (params: Record<string, string | number>) => string
+  labelPostfixFunction?: (params: Record<string, string | number>) => string
+  icon: LucideIcon
+  color: string
+  bgColor: string
+  category: BlockCategory
+  parameters: Parameter[][]
+}
 
 export interface IndicatorOption {
   name: string
@@ -5,13 +46,12 @@ export interface IndicatorOption {
 }
 
 export interface StrategyBuilderProps {
-  strategyId?: string
+  initialStrategy?: StrategyTemplate
   candleOptions?: string[]
   indicatorOptions?: IndicatorOption[]
   unitOptions?: string[]
-  channelOptions?: string[]
+  configOptions?: Record<BlockType, BlockConfig>
   predefinedStrategies?: PredefinedStrategyTemplate[]
-  getStrategyById?: (id: string) => StrategyTemplate | null
   onSave?: (strategy: StrategyTemplate) => void
   themeOverride?: CustomTheme
   supportedAIModels?: string[]
@@ -20,7 +60,7 @@ export interface StrategyBuilderProps {
 
 export interface ActionType {
   index: number
-  action: "OPEN" | "CLOSE" | "BUY" | "SELL" | "NOTIFY"
+  action: ActionBlockType
   options: {
     side?: string
     amount?: number
@@ -31,29 +71,25 @@ export interface ActionType {
     trailingStop?: number
     channel?: string
     message?: string
+    orderType?: string
+    [key: string]: any
   }
 }
 
-export type ConditionBlockType =
-  | "increased-by"
-  | "decreased-by"
-  | "greater-than"
-  | "lower-than"
-  | "crossing-above"
-  | "crossing-below"
-
-export type ActionBlockType = "open-position" | "close-position" | "buy" | "sell" | "notify-me"
-
-export type BlockType = ConditionBlockType | ActionBlockType
+export type ConditionBlockType = string
+export type ActionBlockType = string
+export type BlockType = string
 
 export interface ConditionType {
   index: number
   type: ConditionBlockType
-  indicator1?: string
-  timeframe1?: string
-  indicator2?: string
-  timeframe2?: string
-  value?: number
+  options: {
+    indicator1?: string
+    timeframe1?: string
+    indicator2?: string
+    timeframe2?: string
+    value?: number
+  }
 }
 
 export interface ExecutionOptions {

@@ -5,17 +5,17 @@ import type React from "react"
 import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { BlockConfig, Parameter } from "./block-types"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
 import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from "./ui/select"
 import { Textarea } from "./ui/textarea"
-import { GripVertical, X, ChevronDown, ChevronUp } from "lucide-react"
-import { CustomTheme, IndicatorOption } from "../types"
+import { X, ChevronDown, ChevronUp } from "lucide-react"
+import { BlockConfig, BlockType, CustomTheme, IndicatorOption, Parameter } from "../types"
 
 interface CanvasBlockProps {
   id: string
+  blockType: BlockType
   config: BlockConfig
   values: Record<string, string | number>
   onRemove: () => void
@@ -24,147 +24,46 @@ interface CanvasBlockProps {
 }
 
 function generateDynamicTitle(config: BlockConfig, values: Record<string, string | number>): React.ReactNode {
-  const value = values.value ?? config.parameters.find((p) => p.name === "value")?.default ?? ""
-  const indicator1 = values.indicator1 ?? config.parameters.find((p) => p.name === "indicator1")?.default ?? ""
-  const timeframe1 = values.timeframe1 ?? config.parameters.find((p) => p.name === "timeframe1")?.default ?? ""
-  const indicator2 = values.indicator2 ?? config.parameters.find((p) => p.name === "indicator2")?.default ?? ""
-  const timeframe2 = values.timeframe2 ?? config.parameters.find((p) => p.name === "timeframe2")?.default ?? ""
-
-  const amount = values.amount ?? config.parameters.find((p) => p.name === "amount")?.default ?? ""
-  const unit = values.unit ?? config.parameters.find((p) => p.name === "unit")?.default ?? ""
-  const channel = values.channel ?? config.parameters.find((p) => p.name === "channel")?.default ?? ""
-
-  // Position fields
-  const side = values.side ?? config.parameters.find((p) => p.name === "side")?.default ?? ""
-  const leverage = values.leverage ?? config.parameters.find((p) => p.name === "leverage")?.default ?? ""
-  const stopLoss = values.stopLoss ?? config.parameters.find((p) => p.name === "stopLoss")?.default ?? 0
-  const takeProfit = values.takeProfit ?? config.parameters.find((p) => p.name === "takeProfit")?.default ?? 0
-
-  switch (config.type) {
-    case "increased-by":
-      return (
-        <>
-          <span className="italic text-muted-foreground">
-            {indicator1} ({timeframe1})
-          </span>{" "}
-          <span className="font-bold">Increased by</span> <span className="italic text-muted-foreground">{value}%</span>
-        </>
-      )
-    case "decreased-by":
-      return (
-        <>
-          <span className="italic text-muted-foreground">
-            {indicator1} ({timeframe1})
-          </span>{" "}
-          <span className="font-bold">Decreased by</span> <span className="italic text-muted-foreground">{value}%</span>
-        </>
-      )
-    case "greater-than":
-      return (
-        <>
-          <span className="italic text-muted-foreground">
-            {indicator1} ({timeframe1})
-          </span>{" "}
-          <span className="font-bold">Greater than</span>{" "}
-          <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
-          </span>
-        </>
-      )
-    case "lower-than":
-      return (
-        <>
-          <span className="italic text-muted-foreground">
-            {indicator1} ({timeframe1})
-          </span>{" "}
-          <span className="font-bold">Lower than</span>{" "}
-          <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
-          </span>
-        </>
-      )
-    case "crossing-above":
-      return (
-        <>
-          <span className="italic text-muted-foreground">
-            {indicator1} ({timeframe1})
-          </span>{" "}
-          <span className="font-bold">Crossing above</span>{" "}
-          <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
-          </span>
-        </>
-      )
-    case "crossing-below":
-      return (
-        <>
-          <span className="italic text-muted-foreground">
-            {indicator1} ({timeframe1})
-          </span>{" "}
-          <span className="font-bold">Crossing below</span>{" "}
-          <span className="italic text-muted-foreground">
-            {indicator2 === "Value" ? value : `${indicator2} (${timeframe2})`}
-          </span>
-        </>
-      )
-    case "open-position":
-      return (
-        <>
-          <span className="font-bold">Open {side}</span>{" "}
-          <span className="italic text-muted-foreground">
-            {amount} {unit}
-          </span>
-          {leverage && leverage !== "No" && (
-            <span className="italic text-muted-foreground"> @ {leverage}</span>
-          )}
-          {(Number(stopLoss) > 0 || Number(takeProfit) > 0) && (
-            <span className="italic text-muted-foreground">
-              {Number(stopLoss) > 0 && ` SL:${stopLoss}%`}
-              {Number(takeProfit) > 0 && ` TP:${takeProfit}%`}
-            </span>
-          )}
-        </>
-      )
-    case "close-position":
-      return (
-        <>
-          <span className="font-bold">Close All Positions</span>
-        </>
-      )
-    case "buy":
-      return (
-        <>
-          <span className="font-bold">Buy</span>{" "}
-          <span className="italic text-muted-foreground">
-            {amount} {unit}
-          </span>
-        </>
-      )
-    case "sell":
-      return (
-        <>
-          <span className="font-bold">Sell</span>{" "}
-          <span className="italic text-muted-foreground">
-            {amount} {unit}
-          </span>
-        </>
-      )
-    case "notify-me":
-      return (
-        <>
-          <span className="font-bold">Notify Me</span>{" "}
-          <span className="italic text-muted-foreground">via {channel}</span>
-        </>
-      )
-    default:
-      return <span className="font-bold">{config.label}</span>
+  // Build complete values object with defaults (flatten 2D array)
+  const completeValues: Record<string, string | number> = {}
+  for (const row of config.parameters) {
+    for (const param of row) {
+      completeValues[param.name] = values[param.name] ?? param.default ?? ""
+    }
   }
+
+  return (
+    <>
+      {config.labelPrefixFunction && (
+        <span className="italic text-muted-foreground">
+          {config.labelPrefixFunction(completeValues)}
+        </span>
+      )}
+      {config.labelPrefixFunction && " "}
+      <span className="font-bold">{config.label}</span>
+      {config.labelPostfixFunction && " "}
+      {config.labelPostfixFunction && (
+        <span className="italic text-muted-foreground">
+          {config.labelPostfixFunction(completeValues)}
+        </span>
+      )}
+    </>
+  )
 }
 
-export function CanvasBlock({ id, config, values, onRemove, onValueChange, themeOverride }: CanvasBlockProps) {
+// Helper to find a parameter by name in the 2D array
+function findParameter(parameters: Parameter[][], name: string): Parameter | undefined {
+  for (const row of parameters) {
+    const found = row.find((p) => p.name === name)
+    if (found) return found
+  }
+  return undefined
+}
+
+export function CanvasBlock({ id, blockType, config, values, onRemove, onValueChange, themeOverride }: CanvasBlockProps) {
   const [isExpanded, setIsExpanded] = useState(true)
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const { setNodeRef, transform, transition, isDragging } = useSortable({ id })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -175,7 +74,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
   const Icon = config.icon
 
   // Get effective colors (themeOverride takes precedence)
-  const blockTheme = themeOverride?.blocks?.[config.type]
+  const blockTheme = themeOverride?.blocks?.[blockType]
   const effectiveColor = blockTheme?.color ?? config.color
   const effectiveBgColor = blockTheme?.bgColor ?? config.bgColor
 
@@ -186,7 +85,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
       case "oscillator": return "Oscillators"
       case "volume": return "Volume"
       case "volatility": return "Volatility"
-      default: return category
+      default: return category.replaceAll("-", " ").replace(/\b\w/g, c => c.toUpperCase())
     }
   }
 
@@ -228,19 +127,58 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
     )
   }
 
-  const renderParameter = (param: Parameter) => {
+  // Check if a parameter should be visible based on showWhen/hideWhen conditions
+  const isParameterVisible = (param: Parameter): boolean => {
+    if (param.showWhen) {
+      const dependentValue = values[param.showWhen.param]
+      if (dependentValue !== param.showWhen.equals) {
+        return false
+      }
+    }
+    if (param.hideWhen) {
+      const dependentValue = values[param.hideWhen.param]
+      if (dependentValue === param.hideWhen.equals) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Get filtered indicator options based on filterByIndicator
+  const getFilteredIndicatorOptions = (param: Parameter): IndicatorOption[] => {
+    if (!param.indicatorOptions) return []
+    
+    if (param.filterByIndicator) {
+      const sourceParam = findParameter(config.parameters, param.filterByIndicator)
+      const sourceValue = values[param.filterByIndicator] ?? sourceParam?.default ?? ""
+      const sourceOption = sourceParam?.indicatorOptions?.find((ind) => ind.name === sourceValue)
+      const sourceCategory = sourceOption?.category
+      
+      if (sourceCategory) {
+        return param.indicatorOptions.filter((ind) => ind.category === sourceCategory)
+      }
+    }
+    
+    return param.indicatorOptions
+  }
+
+  const renderParameter = (param: Parameter): React.ReactNode => {
     const value = values[param.name] ?? param.default ?? ""
 
-    // Handle indicator parameters specially
-    if (param.indicatorOptions && param.indicatorOptions.length > 0) {
-      return renderIndicatorSelect(param)
-    }
-
     switch (param.type) {
+      case "label":
+        return (
+          <div className={`py-2 font-semibold ${effectiveColor}`}>
+            {param.label}
+          </div>
+        )
+      case "indicator":
+        const filteredOptions = getFilteredIndicatorOptions(param)
+        return renderIndicatorSelect(param, filteredOptions)
       case "select":
         return (
           <Select value={String(value)} onValueChange={(v) => onValueChange(param.name, v)}>
-            <SelectTrigger className="min-w-[100px]">
+            <SelectTrigger className="min-w-[216px] w-full">
               <SelectValue placeholder={`Select ${param.label}`} />
             </SelectTrigger>
             <SelectContent>
@@ -270,6 +208,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
             rows={3}
           />
         )
+      case "text":
       default:
         return (
           <Input
@@ -282,292 +221,47 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
     }
   }
 
-  const renderConditionParameters = () => {
-    const isIncreasedDecreased = config.type === "increased-by" || config.type === "decreased-by"
-    const isGreaterLower = config.type === "greater-than" || config.type === "lower-than"
-
-    const indicator1Param = config.parameters.find((p) => p.name === "indicator1")
-    const timeframe1Param = config.parameters.find((p) => p.name === "timeframe1")
-    const indicator2Param = config.parameters.find((p) => p.name === "indicator2")
-    const timeframe2Param = config.parameters.find((p) => p.name === "timeframe2")
-    const valueParam = config.parameters.find((p) => p.name === "value")
-
-    if (isIncreasedDecreased) {
-
-      return (
-        <div className="space-y-4">
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Indicator</Label>
-              {indicator1Param && renderParameter(indicator1Param)}
-            </div>
-            <div className="space-y-2">
-              <Label>Candles</Label>
-              {timeframe1Param && renderParameter(timeframe1Param)}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>{valueParam?.label}</Label>
-            {valueParam && renderParameter(valueParam)}
-          </div>
-        </div>
-      )
-    }
-
-    if (isGreaterLower) {
-      const conditionLabel = config.type === "greater-than" ? "Greater Than" : "Lower Than"
-
-      // Get selected indicator1 value and find its category
-      const indicator1Value = values.indicator1 ?? indicator1Param?.default ?? ""
-      const indicator1Option = indicator1Param?.indicatorOptions?.find((ind) => ind.name === indicator1Value)
-      const indicator1Category = indicator1Option?.category
-
-      // Filter indicator2 options to match the same category as indicator1
-      const filteredIndicator2Options = indicator1Category && indicator2Param?.indicatorOptions
-        ? indicator2Param.indicatorOptions.filter((ind) => ind.category === indicator1Category)
-        : indicator2Param?.indicatorOptions
-
-      // Check if indicator2 is "Value" - show numeric input instead
-      const indicator2Value = values.indicator2 ?? indicator2Param?.default ?? ""
-      const isValueSelected = indicator2Value === "Value"
-
-      return (
-        <div className="space-y-4">
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Indicator</Label>
-              {indicator1Param && renderParameter(indicator1Param)}
-            </div>
-            <div className="space-y-2">
-              <Label>Candles</Label>
-              {timeframe1Param && renderParameter(timeframe1Param)}
-            </div>
-          </div>
-
-          <div className={`py-2 font-semibold ${effectiveColor}`}>{conditionLabel}</div>
-
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Target Indicator</Label>
-              {indicator2Param && renderIndicatorSelect(indicator2Param, filteredIndicator2Options)}
-            </div>
-            {isValueSelected ? (
-              <div className="space-y-2">
-                <Label>Value</Label>
-                <Input
-                  type="number"
-                  value={values.value ?? ""}
-                  onChange={(e) => onValueChange("value", parseFloat(e.target.value) || 0)}
-                  placeholder="Enter value"
-                  className="w-24"
-                />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Candles</Label>
-                {timeframe2Param && renderParameter(timeframe2Param)}
-              </div>
-            )}
-          </div>
-        </div>
-      )
-    }
-
-    return null
-  }
-
-  const renderActionParameters = () => {
-    if (config.type === "open-position") {
-      const sideParam = config.parameters.find((p) => p.name === "side")
-      const amountParam = config.parameters.find((p) => p.name === "amount")
-      const unitParam = config.parameters.find((p) => p.name === "unit")
-      const leverageParam = config.parameters.find((p) => p.name === "leverage")
-      const stopLossParam = config.parameters.find((p) => p.name === "stopLoss")
-      const takeProfitParam = config.parameters.find((p) => p.name === "takeProfit")
-      const trailingStopParam = config.parameters.find((p) => p.name === "trailingStop")
-
-      return (
-        <div className="space-y-4">
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Side</Label>
-              {sideParam && renderParameter(sideParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              {amountParam && renderParameter(amountParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              {unitParam && renderParameter(unitParam)}
-            </div>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Leverage</Label>
-              {leverageParam && renderParameter(leverageParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Stop Loss (%)</Label> 
-              {stopLossParam && renderParameter(stopLossParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Take Profit (%)</Label>
-              {takeProfitParam && renderParameter(takeProfitParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Trailing Stop (%)</Label>
-              {trailingStopParam && renderParameter(trailingStopParam)}
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    if (config.type === "close-position") {
-      // No parameters for close-position
-      return null
-    }
-
-    if (config.type === "buy" || config.type === "sell") {
-      const amountParam = config.parameters.find((p) => p.name === "amount")
-      const unitParam = config.parameters.find((p) => p.name === "unit")
-      const stopLossParam = config.parameters.find((p) => p.name === "stopLoss")
-      const takeProfitParam = config.parameters.find((p) => p.name === "takeProfit")
-      const trailingStopParam = config.parameters.find((p) => p.name === "trailingStop")
-
-      return (
-        <div className="space-y-4">
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              {amountParam && renderParameter(amountParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              {unitParam && renderParameter(unitParam)}
-            </div>
-          </div>
-          <div className="flex items-end gap-3">
-            <div className="space-y-2">
-              <Label>Stop Loss (%)</Label>
-              {stopLossParam && renderParameter(stopLossParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Take Profit (%)</Label>
-              {takeProfitParam && renderParameter(takeProfitParam)}
-            </div>
-            <div className="space-y-2">
-              <Label>Trailing Stop (%)</Label>
-              {trailingStopParam && renderParameter(trailingStopParam)}
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-    if (config.type === "notify-me") {
-      const channelParam = config.parameters.find((p) => p.name === "channel")
-      const messageParam = config.parameters.find((p) => p.name === "message")
-      return (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Channel</Label>
-            {channelParam && renderParameter(channelParam)}
-          </div>
-          <div className="space-y-2">
-            <Label>Message</Label>
-            {messageParam && renderParameter(messageParam)}
-          </div>
-        </div>
-      )
-    }
-
-    return null
-  }
-
-  const renderCrossingParameters = () => {
-    const isCrossingBlock = config.type === "crossing-above" || config.type === "crossing-below"
-    if (!isCrossingBlock) return null
-
-    const indicator1Param = config.parameters.find((p) => p.name === "indicator1")
-    const timeframe1Param = config.parameters.find((p) => p.name === "timeframe1")
-    const indicator2Param = config.parameters.find((p) => p.name === "indicator2")
-    const timeframe2Param = config.parameters.find((p) => p.name === "timeframe2")
-
-    const crossingLabel = config.type === "crossing-above" ? "Crossing Above" : "Crossing Below"
-
-    // Get selected indicator1 value and find its category
-    const indicator1Value = values.indicator1 ?? indicator1Param?.default ?? ""
-    const indicator1Option = indicator1Param?.indicatorOptions?.find((ind) => ind.name === indicator1Value)
-    const indicator1Category = indicator1Option?.category
-
-    // Filter indicator2 options to match the same category as indicator1
-    const filteredIndicator2Options = indicator1Category && indicator2Param?.indicatorOptions
-      ? indicator2Param.indicatorOptions.filter((ind) => ind.category === indicator1Category)
-      : indicator2Param?.indicatorOptions
-
-    // Check if indicator2 is "Value" - show numeric input instead
-    const indicator2Value = values.indicator2 ?? indicator2Param?.default ?? ""
-    const isValueSelected = indicator2Value === "Value"
-
+  // Generic function to render all parameter rows
+  const renderParameterRows = () => {
     return (
       <div className="space-y-4">
-        {/* First indicator row */}
-        <div className="flex items-end gap-3">
-          <div className="space-y-2">
-            <Label>Indicator</Label>
-            {indicator1Param && renderParameter(indicator1Param)}
-          </div>
-          <div className="space-y-2">
-            <Label>Candles</Label>
-            {timeframe1Param && renderParameter(timeframe1Param)}
-          </div>
-        </div>
+        {config.parameters.map((row, rowIndex) => {
+          // Filter visible parameters in this row
+          const visibleParams = row.filter(isParameterVisible)
+          if (visibleParams.length === 0) return null
 
-        <div className={`py-2 font-semibold ${effectiveColor}`}>{crossingLabel}</div>
+          // Check if any param in the row is a "label" type
+          const hasOnlyLabel = visibleParams.length === 1 && visibleParams[0].type === "label"
+          
+          if (hasOnlyLabel) {
+            // Render label without flex container
+            return (
+              <div key={rowIndex}>
+                {renderParameter(visibleParams[0])}
+              </div>
+            )
+          }
 
-        {/* Second indicator row */}
-        <div className="flex items-end gap-3">
-          <div className="space-y-2">
-            <Label>Target Indicator</Label>
-            {indicator2Param && renderIndicatorSelect(indicator2Param, filteredIndicator2Options)}
-          </div>
-          {isValueSelected ? (
-            <div className="space-y-2">
-              <Label>Value</Label>
-              <Input
-                type="number"
-                value={values.value ?? ""}
-                onChange={(e) => onValueChange("value", parseFloat(e.target.value) || 0)}
-                placeholder="Enter value"
-                className="w-24"
-              />
+          // Render as flex row
+          return (
+            <div key={rowIndex} className="flex flex-col md:flex-row gap-3">
+              {visibleParams.map((param) => (
+                <div key={param.name} className="space-y-2">
+                  {param.type !== "label" && <Label>{param.label}</Label>}
+                  {renderParameter(param)}
+                </div>
+              ))}
             </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Candles</Label>
-              {timeframe2Param && renderParameter(timeframe2Param)}
-            </div>
-          )}
-        </div>
+          )
+        })}
       </div>
     )
   }
-
-  const isCrossingBlock = config.type === "crossing-above" || config.type === "crossing-below"
-  const isIncreasedDecreased = config.type === "increased-by" || config.type === "decreased-by"
-  const isGreaterLower = config.type === "greater-than" || config.type === "lower-than"
-  const isActionBlock =
-    config.type === "open-position" || config.type === "close-position" || config.type === "notify-me" || config.type === "buy" || config.type === "sell"
 
   return (
     <div ref={setNodeRef} style={style} onClick={(e) => e.stopPropagation()} className={`relative rounded-lg border-2 ${effectiveBgColor} bg-card shadow-sm`}>
       <div className={`flex items-center justify-between p-3 border-b border-border rounded-t-md ${effectiveBgColor}`}>
         <div className="flex items-center gap-3">
-          <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
-            <GripVertical className="h-4 w-4 min-w-4 text-muted-foreground" />
-          </button>
           <div className={`flex h-8 w-8 min-w-8 items-center justify-center rounded-md ${effectiveBgColor} ${effectiveColor}`}>
             <Icon className="h-4 w-4" />
           </div>
@@ -592,22 +286,7 @@ export function CanvasBlock({ id, config, values, onRemove, onValueChange, theme
 
       {isExpanded && config.parameters.length > 0 && (
         <div className="p-4 bg-card/50">
-          {isActionBlock ? (
-            renderActionParameters()
-          ) : isCrossingBlock ? (
-            renderCrossingParameters()
-          ) : isIncreasedDecreased || isGreaterLower ? (
-            renderConditionParameters()
-          ) : (
-            <div className="space-y-4">
-              {config.parameters.map((param) => (
-                <div key={param.name} className="space-y-2">
-                  <Label>{param.label}</Label>
-                  {renderParameter(param)}
-                </div>
-              ))}
-            </div>
-          )}
+          {renderParameterRows()}
         </div>
       )}
     </div>

@@ -6,7 +6,7 @@
 
 ## 🎯 Purpose
 
-This package provides a **visual drag-and-drop trading strategy builder** for React/Next.js applications. It enables users to create trading strategies without writing code by combining condition and action blocks into rules.
+This package provides a **visual drag-and-drop trading strategy builder** for React/Next.js applications. It enables users to create trading strategies without writing code by combining condition and action blocks into rules. The component is fully customizable with support for custom block definitions, theming, and dark mode.
 
 ---
 
@@ -24,14 +24,16 @@ This package provides a **visual drag-and-drop trading strategy builder** for Re
 │  │  ├─ Greater     │  │  └────────────────────────────────┘  │  │
 │  │  ├─ Lower       │  │  ┌────────────────────────────────┐  │  │
 │  │  ├─ Cross Above │  │  │ Rule 2                         │  │  │
-│  │  └─ Cross Below │  │  │  Conditions: [...blocks]       │  │  │
-│  │                 │  │  │  Actions: [...blocks]          │  │  │
-│  │  [Actions]      │  │  └────────────────────────────────┘  │  │
-│  │  ├─ Open        │  │                                      │  │
-│  │  ├─ Close       │  │        + Add New Rule                │  │
-│  │  ├─ Buy         │  │                                      │  │
-│  │  ├─ Sell        │  └──────────────────────────────────────┘  │
-│  │  └─ Notify      │                                            │
+│  │  ├─ Cross Below │  │  │  Conditions: [...blocks]       │  │  │
+│  │  ├─ + Custom... │  │  │  Actions: [...blocks]          │  │  │
+│  │                 │  │  └────────────────────────────────┘  │  │
+│  │  [Actions]      │  │                                      │  │
+│  │  ├─ Open        │  │        + Add New Rule                │  │
+│  │  ├─ Close       │  │                                      │  │
+│  │  ├─ Buy         │  └──────────────────────────────────────┘  │
+│  │  ├─ Sell        │                                            │
+│  │  ├─ Notify      │                                            │
+│  │  └─ + Custom... │                                            │
 │  └─────────────────┘                                            │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│
@@ -54,21 +56,31 @@ strategy/
 │   ├── index.ts                      # Public exports
 │   ├── types/
 │   │   └── index.ts                  # Type definitions
+│   │       ├── StrategyTemplate      # Main output type
+│   │       ├── ConditionType         # Condition block data
+│   │       ├── ActionType            # Action block data
+│   │       ├── BlockConfig           # Block configuration
+│   │       ├── Parameter             # Parameter definition
+│   │       ├── StrategyBuilderProps  # Component props
+│   │       └── CustomTheme           # Theme override
+│   │
 │   └── components/
-│       ├── strategy-builder.tsx      # Main component (1372 lines)
+│       ├── strategy-builder.tsx      # Main component
 │       │   └── Orchestrates all sub-components
 │       │   └── Manages drag-and-drop context
 │       │   └── Handles strategy serialization
 │       │   └── AI generation integration
+│       │   └── Dynamically calculates condition/action blocks
 │       │
-│       ├── block-types.ts            # Block configurations (657 lines)
+│       ├── block-types.ts            # Block configurations
 │       │   └── blockConfigs: Record<BlockType, BlockConfig>
-│       │   └── conditionBlocks, actionBlocks arrays
 │       │   └── Default options (indicators, timeframes, etc.)
+│       │   └── STATIC_SYSTEM_PROMPT_V1 for AI generation
 │       │
 │       ├── canvas-block.tsx          # Block rendered on canvas
-│       │   └── Editable parameters
+│       │   └── Editable parameters (2D grid layout)
 │       │   └── Delete functionality
+│       │   └── Uses blockType prop for identification
 │       │
 │       ├── draggable-block.tsx       # Block in palette (draggable)
 │       │   └── Preview appearance
@@ -118,7 +130,7 @@ User Interaction
        │
        ▼
 ┌──────────────────┐
-│  CanvasBlock     │ ◄──── User edits parameters
+│  CanvasBlock     │ ◄──── User edits parameters (2D grid)
 │  Created         │
 └──────────────────┘
        │
@@ -146,11 +158,11 @@ User Interaction
 
 | Component | Responsibility |
 |-----------|----------------|
-| `StrategyBuilder` | Main entry point, DnD context, state management, AI integration |
+| `StrategyBuilder` | Main entry point, DnD context, state management, AI integration, dynamically calculates blocks from configOptions |
 | `DraggableBlock` | Render blocks in palette, initiate drag |
 | `RuleDropZone` | Accept dropped blocks, handle reordering |
-| `CanvasBlock` | Render placed blocks, edit parameters, delete |
-| `block-types.ts` | Define all block configurations and default options |
+| `CanvasBlock` | Render placed blocks with 2D parameter grid, edit parameters, delete |
+| `block-types.ts` | Define default block configurations and options |
 
 ---
 
@@ -169,43 +181,81 @@ User Interaction
 ## 🎨 Styling System
 
 - **Tailwind CSS** for all styling
-- **CSS Variables** for theming (via Radix UI)
-- **Custom themes** via `themeOverride` prop
+- **CSS Variables** for theming (supports dark mode via `.dark` class)
+- **Custom themes** via `themeOverride` prop for block colors
 - Block colors follow semantic meaning:
   - 🟢 Green: bullish/buy actions
   - 🔴 Red: bearish/sell actions  
   - 🔵 Blue: neutral conditions
   - 🟡 Yellow/Orange: warnings/notifications
 
+### Dark Mode Support
+
+The component reads CSS variables that change based on `.dark` class on `<html>`:
+
+```css
+/* Light mode */
+:root {
+  --background: #ffffff;
+  --card: #ffffff;
+  --primary: #8a61ff;
+  /* ... */
+}
+
+/* Dark mode */
+.dark {
+  --background: #16121f;
+  --card: #1f1b27;
+  --primary: #8a61ff;
+  /* ... */
+}
+```
+
 ---
 
 ## 🔌 Extension Points
 
-### 1. Custom Indicators
+### 1. Custom Block Configurations
+```tsx
+configOptions={{
+  ...blockConfigs,
+  "my-custom-block": {
+    label: "Custom",
+    description: "...",
+    icon: MyIcon,
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10 border-purple-500/30",
+    category: "action",
+    parameters: [
+      [{ name: "param1", type: "number", label: "Value" }],
+    ],
+  },
+}}
+```
+
+### 2. Custom Indicators
 ```tsx
 indicatorOptions={[{ name: "Custom", category: "custom" }]}
 ```
 
-### 2. Custom Timeframes
+### 3. Custom Timeframes
 ```tsx
 candleOptions={["1s", "5s", "1min", ...]}
 ```
 
-### 3. Custom Theme
+### 4. Custom Theme
 ```tsx
-themeOverride={myCustomTheme}
-// where myCustomTheme = { blocks: { "increased-by": { color: "...", bgColor: "..." } } }
+themeOverride={{ blocks: { "increased-by": { color: "...", bgColor: "..." } } }}
 ```
 
-### 4. AI Generation
+### 5. AI Generation
 ```tsx
 callAIFunction={async (system, user, model) => "AI response"}
 ```
 
-### 5. Persistence
+### 6. Initial Strategy
 ```tsx
-getStrategyById={(id) => fetchFromDB(id)}
-onSave={(strategy) => saveToDBB(strategy)}
+initialStrategy={existingStrategyObject}
 ```
 
 ---
@@ -232,16 +282,18 @@ The component produces a `StrategyTemplate` JSON:
         {
           "index": 0,
           "type": "crossing-above",
-          "indicator1": "RSI(14)",
-          "timeframe1": "1h",
-          "indicator2": "Value",
-          "value": 30
+          "options": {
+            "indicator1": "RSI(14)",
+            "timeframe1": "1h",
+            "indicator2": "Value",
+            "value": 30
+          }
         }
       ],
       "actions": [
         {
           "index": 0,
-          "action": "OPEN",
+          "action": "open-position",
           "options": {
             "side": "LONG",
             "amount": 100,
@@ -251,6 +303,42 @@ The component produces a `StrategyTemplate` JSON:
       ]
     }
   ]
+}
+```
+
+### Key Type Structures
+
+```typescript
+// Condition block output
+interface ConditionType {
+  index: number
+  type: ConditionBlockType  // Block type name (e.g., "crossing-above")
+  options: {
+    indicator1?: string
+    timeframe1?: string
+    indicator2?: string
+    timeframe2?: string
+    value?: number
+    [key: string]: any  // Custom parameters
+  }
+}
+
+// Action block output
+interface ActionType {
+  index: number
+  action: ActionBlockType  // Block type name (e.g., "open-position")
+  options: {
+    side?: string
+    amount?: number
+    unit?: string
+    leverage?: string
+    stopLoss?: number
+    takeProfit?: number
+    trailingStop?: number
+    channel?: string
+    message?: string
+    [key: string]: any  // Custom parameters
+  }
 }
 ```
 
@@ -269,30 +357,55 @@ The component produces a `StrategyTemplate` JSON:
 
 ## 📝 Common AI Agent Tasks
 
-### Add a new condition block type
-1. Add type to `ConditionBlockType` in `types/index.ts`
-2. Add config to `blockConfigs` in `block-types.ts`
-3. Add to `conditionBlocks` array
-
-### Add a new action block type
-1. Add action to `ActionType.action` union in `types/index.ts`
-2. Add config to `blockConfigs` in `block-types.ts`
-3. Add to `actionBlocks` array
+### Add a new custom block type
+1. Define `BlockConfig` with label, description, icon, colors, category, parameters
+2. Pass to `configOptions` prop merged with `blockConfigs`
+3. Parameters are a 2D array (rows of parameters)
 
 ### Add new parameter to a block
-1. Add parameter to `BlockConfig.parameters` in `block-types.ts`
-2. Update serialization in `strategy-builder.tsx`
+1. Add parameter object to the block's `parameters` array in `configOptions`
+2. Each parameter needs unique `name` within the block
+3. Supported types: `"select"`, `"number"`, `"text"`, `"textarea"`, `"label"`, `"indicator"`
 
-### Modify the output JSON structure
-1. Update `StrategyTemplate` in `types/index.ts`
-2. Update serialization logic in `strategy-builder.tsx`
+### Load an existing strategy
+1. Fetch strategy data as `StrategyTemplate`
+2. Pass to `initialStrategy` prop
+3. Component will initialize with that strategy loaded
+
+### Enable dark mode
+1. Define CSS variables in `.dark` selector
+2. Toggle `.dark` class on `<html>` element
+3. Component automatically uses the CSS variables
+
+### Customize block appearance
+1. Create `CustomTheme` object with block overrides
+2. Pass to `themeOverride` prop
+3. Override `color` (text) and `bgColor` (background/border) per block type
 
 ---
 
 ## 🏷️ Package Info
 
 - **Name**: `@palabola86/trade-strategy-builder`
-- **Version**: 1.0.0
+- **Version**: 1.1.0
 - **License**: MIT
 - **Repository**: https://github.com/Palabola/TradeStrategyBuilder
 - **NPM**: https://www.npmjs.com/package/@palabola86/trade-strategy-builder
+
+---
+
+## ⚠️ Breaking Changes from v1.0
+
+### Props Changes
+- **Removed**: `strategyId`, `getStrategyById`, `channelOptions`
+- **Added**: `initialStrategy`, `configOptions`
+
+### Type Changes
+- `ConditionType`: Now has `type` (block type name) and `options` object (was flat structure)
+- `ActionType.action`: Now uses block type name (e.g., `"open-position"`) instead of uppercase (e.g., `"OPEN"`)
+- `BlockConfig`: Parameters are now a 2D array (`Parameter[][]`) for row-based layout
+- `BlockConfig`: Added optional `promptDescription` field for AI generation
+
+### Component Changes
+- Condition/action block arrays are now dynamically calculated from `configOptions`
+- Dark mode supported via CSS variables with `.dark` class

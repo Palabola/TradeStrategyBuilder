@@ -3,17 +3,9 @@
 // Main component
 export { StrategyBuilder } from "./components/strategy-builder"
 
-// Types
-export type {
-  BlockCategory,
-  BlockConfig,
-} from "./components/block-types"
-
 // Constants (for consumers who need them)
 export {
   blockConfigs,
-  conditionBlocks,
-  actionBlocks,
   tradingPairs,
   candleOptions,
   indicatorOptions,
@@ -31,6 +23,8 @@ export { RuleDropZone } from "./components/rule-drop-zone"
 
 // Types from types folder
 export type { 
+    BlockCategory,
+    BlockConfig,
     StrategyTemplate,  
     IndicatorOption,
     CustomTheme,

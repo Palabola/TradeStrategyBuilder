@@ -3,11 +3,13 @@
 import { useDroppable } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CanvasBlock } from "./canvas-block"
-import type { BlockConfig } from "./block-types"
 import { ArrowDown } from "lucide-react"
+import { BlockConfig } from ".."
+import { BlockType } from "../types"
 
 interface CanvasItem {
   id: string
+  blockType: BlockType
   config: BlockConfig
   values: Record<string, string | number>
 }
@@ -47,6 +49,7 @@ export function StrategyCanvas({ items, onRemoveBlock, onValueChange }: Strategy
               <div key={item.id}>
                 <CanvasBlock
                   id={item.id}
+                  blockType={item.blockType}
                   config={item.config}
                   values={item.values}
                   onRemove={() => onRemoveBlock(item.id)}

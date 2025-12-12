@@ -10,7 +10,9 @@ A visual drag-and-drop trading strategy builder component for React and Next.js 
 - 🎯 **Drag-and-Drop Interface** - Intuitive block-based strategy building
 - 📊 **Condition Blocks** - Price movements, indicator comparisons, crossovers
 - ⚡ **Action Blocks** - Open/close positions, buy/sell, notifications
+- 🧩 **Custom Block Configs** - Define your own blocks with custom parameters
 - 🎨 **Customizable Themes** - Override colors and styles
+- 🌙 **Dark Mode Support** - Full dark mode via CSS variables
 - 🤖 **AI Builder Support** - Integrate with AI models to generate strategies
 - 📱 **Responsive Design** - Works on desktop and mobile
 
@@ -107,23 +109,26 @@ import type {
   IndicatorOption,
   CustomTheme,
   PredefinedStrategyTemplate,
+  BlockType,
+  BlockConfig,
 } from "@palabola86/trade-strategy-builder"
 
 interface StrategyBuilderProps {
-  // Load existing strategy by ID
-  strategyId?: string
+  // Load existing strategy directly
+  initialStrategy?: StrategyTemplate
+
+  // Custom block configurations (extend or override default blocks)
+  configOptions?: Record<BlockType, BlockConfig>
 
   // Custom dropdown options
   candleOptions?: string[]
   indicatorOptions?: IndicatorOption[]
   unitOptions?: string[]
-  channelOptions?: string[]
 
   // Predefined strategy templates
   predefinedStrategies?: PredefinedStrategyTemplate[]
 
   // Strategy persistence
-  getStrategyById?: (id: string) => StrategyTemplate | null
   onSave?: (strategy: StrategyTemplate) => void
 
   // Theming
@@ -136,6 +141,137 @@ interface StrategyBuilderProps {
     userPrompts: string[],
     model: string
   ) => Promise<string>
+}
+```
+
+## Custom Block Configurations
+
+You can define custom blocks or override existing ones using the `configOptions` prop:
+
+```tsx
+import { StrategyBuilder, blockConfigs, BlockConfig, BlockType } from "@palabola86/trade-strategy-builder"
+import { DollarSign, Banknote, Bell } from "lucide-react"
+
+// Define custom blocks
+const customBlockConfigs: Record<BlockType, BlockConfig> = {
+  "buy-limit": {
+    label: "Buy Limit",
+    description: "Place a buy limit order at a specified price",
+    promptDescription: "Buy limit order at limitPrice. Optional stopLoss, takeProfit, trailingStop.",
+    icon: DollarSign,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10 border-green-500/30",
+    category: "action",
+    // Parameters are a 2D array - each inner array is a row in the UI
+    parameters: [
+      // Row 1: Limit price settings
+      [
+        {
+          name: "limitPrice",
+          type: "number",
+          label: "Limit Price",
+          default: 0.5,
+          required: true,
+        },
+        {
+          name: "unitLimit",
+          type: "select",
+          label: "Unit",
+          options: ["USD", "%"],
+          default: "%",
+          required: true,
+        },
+      ],
+      // Row 2: Amount settings
+      [
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "unit",
+          type: "select",
+          label: "Unit",
+          options: ["USD", "%"],
+          default: "USD",
+          required: true,
+        },
+      ],
+      // Row 3: Stop loss / Take profit
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+      ],
+    ],
+  },
+  "always": {
+    label: "Always Trigger",
+    description: "Always trigger the action regardless of conditions",
+    promptDescription: "Always triggers the associated action block unconditionally.",
+    icon: Bell,
+    color: "text-yellow-500",
+    bgColor: "bg-yellow-500/10 border-yellow-500/30",
+    category: "condition",
+    parameters: [], // No parameters needed
+  },
+}
+
+// Use with StrategyBuilder
+export default function CustomStrategyBuilder() {
+  return (
+    <StrategyBuilder
+      configOptions={{
+        ...blockConfigs, // Include default blocks
+        ...customBlockConfigs, // Add/override with custom blocks
+      }}
+      onSave={(strategy) => console.log(strategy)}
+    />
+  )
+}
+```
+
+### BlockConfig Interface
+
+```typescript
+interface BlockConfig {
+  label: string                    // Display name
+  description: string              // Tooltip description
+  promptDescription?: string       // AI-friendly description for strategy generation
+  labelPrefixFunction?: (params: Record<string, string | number>) => string
+  labelPostfixFunction?: (params: Record<string, string | number>) => string
+  icon: LucideIcon                 // Icon component from lucide-react
+  color: string                    // Tailwind text color class
+  bgColor: string                  // Tailwind bg/border color classes
+  category: "condition" | "action" // Block category
+  parameters: Parameter[][]        // 2D array - rows of parameters
+}
+
+interface Parameter {
+  name: string                     // Unique identifier within the block
+  type: "select" | "number" | "text" | "textarea" | "label" | "indicator"
+  label: string                    // Display label
+  options?: string[]               // For "select" type
+  indicatorOptions?: IndicatorOption[]  // For "indicator" type
+  placeholder?: string
+  default?: string | number
+  required?: boolean
+  filterByIndicator?: string       // Filter options by another indicator's category
+  showWhen?: { param: string; equals: string | number }  // Conditional rendering
+  hideWhen?: { param: string; equals: string | number }  // Conditional hiding
 }
 ```
 
@@ -152,20 +288,13 @@ import type { IndicatorOption, StrategyTemplate } from "@palabola86/trade-strate
 const customIndicators: IndicatorOption[] = [
   { name: "Price", category: "price" },
   { name: "SMA(20)", category: "price" },
-  { name: "SMA(50)", category: "price" },
   { name: "EMA(12)", category: "price" },
-  { name: "EMA(26)", category: "price" },
   { name: "RSI(14)", category: "oscillator" },
   { name: "MACD", category: "oscillator" },
-  { name: "Stochastic", category: "oscillator" },
-  { name: "Bollinger Bands", category: "volatility" },
-  { name: "ATR(14)", category: "volatility" },
   { name: "Volume", category: "volume" },
 ]
 
-const customTimeframes = ["1min", "5min", "15min", "30min", "1h", "4h", "1d", "1w"]
-
-const customUnits = ["USD", "EUR", "BTC", "%"]
+const customTimeframes = ["1min", "5min", "15min", "1h", "4h", "1d"]
 
 export default function CustomStrategyBuilder() {
   const handleSave = (strategy: StrategyTemplate) => {
@@ -176,54 +305,36 @@ export default function CustomStrategyBuilder() {
     <StrategyBuilder
       indicatorOptions={customIndicators}
       candleOptions={customTimeframes}
-      unitOptions={customUnits}
       onSave={handleSave}
     />
   )
 }
 ```
 
-### With Strategy Persistence
+### Loading an Existing Strategy
 
 ```tsx
 "use client"
 
-import { useState, useEffect } from "react"
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
 import type { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 
-const STORAGE_KEY = "saved-strategies"
-
-function getSavedStrategies(): StrategyTemplate[] {
-  if (typeof window === "undefined") return []
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return stored ? JSON.parse(stored) : []
-}
-
+// Load strategy from your storage
 function getStrategyById(id: string): StrategyTemplate | null {
-  const strategies = getSavedStrategies()
-  return strategies.find((s) => s.strategyId === id) || null
+  const stored = localStorage.getItem(`strategy-${id}`)
+  return stored ? JSON.parse(stored) : null
 }
 
-function saveStrategy(strategy: StrategyTemplate): void {
-  const strategies = getSavedStrategies()
-  const existingIndex = strategies.findIndex((s) => s.strategyId === strategy.strategyId)
-  
-  if (existingIndex >= 0) {
-    strategies[existingIndex] = strategy
-  } else {
-    strategies.push(strategy)
-  }
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(strategies))
-}
+export default function EditStrategyPage({ strategyId }: { strategyId: string }) {
+  // Fetch the strategy before rendering
+  const existingStrategy = getStrategyById(strategyId)
 
-export default function PersistentStrategyBuilder({ strategyId }: { strategyId?: string }) {
   return (
     <StrategyBuilder
-      strategyId={strategyId}
-      getStrategyById={getStrategyById}
-      onSave={saveStrategy}
+      initialStrategy={existingStrategy || undefined}
+      onSave={(strategy) => {
+        localStorage.setItem(`strategy-${strategy.strategyId}`, JSON.stringify(strategy))
+      }}
     />
   )
 }
@@ -231,250 +342,108 @@ export default function PersistentStrategyBuilder({ strategyId }: { strategyId?:
 
 ### Custom Theme
 
-The Strategy Builder supports custom theming through the `themeOverride` prop for block colors, and CSS variables for UI elements.
-
-#### Primary Button Colors
-
-You can customize the primary button colors by defining the `--primary` CSS variable in your `globals.css`:
-
-```css
-:root {
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-}
-
-.dark {
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-}
-```
-
-#### Block Theme Override
-
 ```tsx
 "use client"
 
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
-import type { CustomTheme, StrategyTemplate } from "@palabola86/trade-strategy-builder"
+import type { CustomTheme } from "@palabola86/trade-strategy-builder"
 
-// Grayscale theme example
 const grayscaleTheme: CustomTheme = {
   blocks: {
     "increased-by": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
     "decreased-by": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
-    "greater-than": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
-    "lower-than": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
-    "crossing-above": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
-    "crossing-below": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
     "open-position": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
-    "close-position": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
-    "buy": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
-    "sell": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
-    "notify-me": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
-  },
-}
-
-// Vibrant theme example
-const vibrantTheme: CustomTheme = {
-  blocks: {
-    "increased-by": { color: "text-emerald-500", bgColor: "bg-emerald-500/10 border-emerald-500/30" },
-    "decreased-by": { color: "text-rose-500", bgColor: "bg-rose-500/10 border-rose-500/30" },
-    "greater-than": { color: "text-blue-500", bgColor: "bg-blue-500/10 border-blue-500/30" },
-    "lower-than": { color: "text-purple-500", bgColor: "bg-purple-500/10 border-purple-500/30" },
-    "crossing-above": { color: "text-cyan-500", bgColor: "bg-cyan-500/10 border-cyan-500/30" },
-    "crossing-below": { color: "text-amber-500", bgColor: "bg-amber-500/10 border-amber-500/30" },
-    "open-position": { color: "text-green-500", bgColor: "bg-green-500/10 border-green-500/30" },
-    "close-position": { color: "text-red-500", bgColor: "bg-red-500/10 border-red-500/30" },
-    "buy": { color: "text-teal-500", bgColor: "bg-teal-500/10 border-teal-500/30" },
-    "sell": { color: "text-orange-500", bgColor: "bg-orange-500/10 border-orange-500/30" },
-    "notify-me": { color: "text-indigo-500", bgColor: "bg-indigo-500/10 border-indigo-500/30" },
+    // ... other blocks
   },
 }
 
 export default function ThemedStrategyBuilder() {
-  return <StrategyBuilder themeOverride={vibrantTheme} />
+  return <StrategyBuilder themeOverride={grayscaleTheme} />
 }
 ```
 
-### Predefined Strategy Templates
+## Dark Mode Support
+
+The Strategy Builder supports dark mode via CSS variables. Define your dark mode colors in your `globals.css`:
+
+```css
+/* Light mode (default) */
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #8a61ff;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #8a61ff;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #8a61ff;
+}
+
+/* Dark mode - add .dark class to html element */
+.dark {
+  --background: #16121f;
+  --foreground: #fff;
+  --card: #1f1b27;
+  --card-foreground: #fff;
+  --popover: #1f1b27;
+  --popover-foreground: #fff;
+  --primary: #8a61ff;
+  --primary-foreground: #fff;
+  --secondary: #686b8229;
+  --secondary-foreground: #fff;
+  --muted: #686b821f;
+  --muted-foreground: #9497a9;
+  --accent: #8a61ff;
+  --accent-foreground: #fff;
+  --destructive: #ff7386;
+  --destructive-foreground: #fff;
+  --border: #686b8252;
+  --input: #686b8229;
+  --ring: #8a61ff;
+}
+```
+
+Create a dark mode toggle component:
 
 ```tsx
 "use client"
 
-import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
-import type { PredefinedStrategyTemplate, StrategyTemplate } from "@palabola86/trade-strategy-builder"
+import { Moon, Sun } from "lucide-react"
+import { useEffect, useState } from "react"
 
-const predefinedStrategies: PredefinedStrategyTemplate[] = [
-  {
-    id: "rsi-oversold",
-    name: "RSI Oversold Bounce",
-    description: "Buy when RSI drops below 30 and starts recovering",
-    strategy: {
-      strategyName: "RSI Oversold Bounce",
-      symbols: ["BTC/USD", "ETH/USD"],
-      executionOptions: {
-        runIntervalMinutes: 15,
-        maximumExecuteCount: 10,
-        intervalBetweenExecutionsMinutes: 60,
-        maximumOpenPositions: 2,
-      },
-      rules: [
-        {
-          name: "Buy on RSI Recovery",
-          conditions: [
-            {
-              index: 0,
-              type: "crossing-above",
-              indicator1: "RSI(14)",
-              timeframe1: "1h",
-              indicator2: "Value",
-              value: 30,
-            },
-          ],
-          actions: [
-            {
-              index: 0,
-              action: "OPEN",
-              options: {
-                side: "LONG",
-                amount: 100,
-                unit: "USD",
-                leverage: "1x",
-              },
-            },
-          ],
-        },
-        {
-          name: "Take Profit",
-          conditions: [
-            {
-              index: 0,
-              type: "greater-than",
-              indicator1: "RSI(14)",
-              timeframe1: "1h",
-              indicator2: "Value",
-              value: 70,
-            },
-          ],
-          actions: [
-            {
-              index: 0,
-              action: "CLOSE",
-              options: {},
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    id: "ma-crossover",
-    name: "Moving Average Crossover",
-    description: "Classic EMA 20/50 crossover strategy",
-    strategy: {
-      strategyName: "MA Crossover",
-      symbols: ["BTC/USD"],
-      executionOptions: {
-        runIntervalMinutes: 60,
-        maximumExecuteCount: 5,
-        intervalBetweenExecutionsMinutes: 240,
-        maximumOpenPositions: 1,
-      },
-      rules: [
-        {
-          name: "Golden Cross - Buy",
-          conditions: [
-            {
-              index: 0,
-              type: "crossing-above",
-              indicator1: "EMA(20)",
-              timeframe1: "4h",
-              indicator2: "EMA(50)",
-              timeframe2: "4h",
-            },
-          ],
-          actions: [
-            {
-              index: 0,
-              action: "BUY",
-              options: { amount: 50, unit: "%" },
-            },
-          ],
-        },
-        {
-          name: "Death Cross - Sell",
-          conditions: [
-            {
-              index: 0,
-              type: "crossing-below",
-              indicator1: "EMA(20)",
-              timeframe1: "4h",
-              indicator2: "EMA(50)",
-              timeframe2: "4h",
-            },
-          ],
-          actions: [
-            {
-              index: 0,
-              action: "SELL",
-              options: { amount: 100, unit: "%" },
-            },
-          ],
-        },
-      ],
-    },
-  },
-]
+export function DarkModeToggle() {
+  const [isDark, setIsDark] = useState(false)
 
-export default function TemplatesStrategyBuilder() {
-  return <StrategyBuilder predefinedStrategies={predefinedStrategies} />
-}
-```
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme")
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    const initialDark = savedTheme === "dark" || (!savedTheme && prefersDark)
+    setIsDark(initialDark)
+    if (initialDark) document.documentElement.classList.add("dark")
+  }, [])
 
-### AI-Powered Strategy Generation
-
-```tsx
-"use client"
-
-import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
-import type { StrategyTemplate } from "@palabola86/trade-strategy-builder"
-
-const supportedModels = ["gpt-4", "gpt-3.5-turbo", "claude-3"]
-
-async function callAI(
-  systemPrompt: string,
-  userPrompts: string[],
-  model: string
-): Promise<string> {
-  const response = await fetch("/api/ai", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      systemPrompt,
-      messages: userPrompts,
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error("AI request failed")
-  }
-
-  const data = await response.json()
-  return data.content
-}
-
-export default function AIStrategyBuilder() {
-  const handleSave = (strategy: StrategyTemplate) => {
-    console.log("Strategy saved:", strategy)
+  const toggleTheme = () => {
+    const newIsDark = !isDark
+    setIsDark(newIsDark)
+    document.documentElement.classList.toggle("dark", newIsDark)
+    localStorage.setItem("theme", newIsDark ? "dark" : "light")
   }
 
   return (
-    <StrategyBuilder
-      supportedAIModels={supportedModels}
-      callAIFunction={callAI}
-      onSave={handleSave}
-    />
+    <button onClick={toggleTheme} className="p-2 rounded-md hover:bg-accent">
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
   )
 }
 ```
@@ -488,12 +457,7 @@ interface StrategyTemplate {
   strategyId?: string
   strategyName: string
   symbols: string[]
-  executionOptions: {
-    runIntervalMinutes?: number
-    maximumExecuteCount?: number
-    intervalBetweenExecutionsMinutes?: number
-    maximumOpenPositions?: number
-  }
+  executionOptions: ExecutionOptions
   rules: {
     name: string
     conditions: ConditionType[]
@@ -501,19 +465,29 @@ interface StrategyTemplate {
   }[]
 }
 
+interface ExecutionOptions {
+  runIntervalMinutes?: number
+  maximumExecuteCount?: number
+  intervalBetweenExecutionsMinutes?: number
+  maximumOpenPositions?: number
+}
+
 interface ConditionType {
   index: number
-  type: "increased-by" | "decreased-by" | "greater-than" | "lower-than" | "crossing-above" | "crossing-below"
-  indicator1?: string
-  timeframe1?: string
-  indicator2?: string
-  timeframe2?: string
-  value?: number
+  type: ConditionBlockType  // Block type name (e.g., "increased-by", "crossing-above")
+  options: {
+    indicator1?: string
+    timeframe1?: string
+    indicator2?: string
+    timeframe2?: string
+    value?: number
+    [key: string]: any  // Custom parameters from your blocks
+  }
 }
 
 interface ActionType {
   index: number
-  action: "OPEN" | "CLOSE" | "BUY" | "SELL" | "NOTIFY"
+  action: ActionBlockType  // Block type name (e.g., "open-position", "buy", "notify-me")
   options: {
     side?: string
     amount?: number
@@ -521,9 +495,138 @@ interface ActionType {
     leverage?: string
     stopLoss?: number
     takeProfit?: number
+    trailingStop?: number
     channel?: string
     message?: string
+    orderType?: string
+    [key: string]: any  // Custom parameters from your blocks
   }
+}
+```
+
+### Example Output
+
+```json
+{
+  "strategyId": "abc123",
+  "strategyName": "RSI Strategy",
+  "symbols": ["BTC/USD"],
+  "executionOptions": {
+    "runIntervalMinutes": 15,
+    "maximumExecuteCount": 10,
+    "maximumOpenPositions": 2
+  },
+  "rules": [
+    {
+      "name": "Buy on RSI Oversold",
+      "conditions": [
+        {
+          "index": 0,
+          "type": "crossing-above",
+          "options": {
+            "indicator1": "RSI(14)",
+            "timeframe1": "1h",
+            "indicator2": "Value",
+            "value": 30
+          }
+        }
+      ],
+      "actions": [
+        {
+          "index": 0,
+          "action": "open-position",
+          "options": {
+            "side": "LONG",
+            "amount": 100,
+            "unit": "USD",
+            "leverage": "1"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Predefined Strategy Templates
+
+```tsx
+import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
+import type { PredefinedStrategyTemplate } from "@palabola86/trade-strategy-builder"
+
+const templates: PredefinedStrategyTemplate[] = [
+  {
+    id: "rsi-oversold",
+    name: "RSI Oversold Bounce",
+    description: "Buy when RSI drops below 30 and starts recovering",
+    strategy: {
+      strategyName: "RSI Oversold Bounce",
+      symbols: ["BTC/USD"],
+      executionOptions: { runIntervalMinutes: 15 },
+      rules: [
+        {
+          name: "Buy on RSI Recovery",
+          conditions: [
+            {
+              index: 0,
+              type: "crossing-above",
+              options: {
+                indicator1: "RSI(14)",
+                timeframe1: "1h",
+                indicator2: "Value",
+                value: 30,
+              },
+            },
+          ],
+          actions: [
+            {
+              index: 0,
+              action: "open-position",
+              options: { side: "LONG", amount: 100, unit: "USD" },
+            },
+          ],
+        },
+      ],
+    },
+  },
+]
+
+export default function TemplatesBuilder() {
+  return <StrategyBuilder predefinedStrategies={templates} />
+}
+```
+
+## AI-Powered Strategy Generation
+
+```tsx
+"use client"
+
+import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
+
+const supportedModels = ["gpt-4", "claude-3", "grok"]
+
+async function callAI(
+  systemPrompt: string,
+  userPrompts: string[],
+  model: string
+): Promise<string> {
+  const response = await fetch("/api/ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, systemPrompt, messages: userPrompts }),
+  })
+  const data = await response.json()
+  return data.content
+}
+
+export default function AIStrategyBuilder() {
+  return (
+    <StrategyBuilder
+      supportedAIModels={supportedModels}
+      callAIFunction={callAI}
+      onSave={(strategy) => console.log(strategy)}
+    />
+  )
 }
 ```
 

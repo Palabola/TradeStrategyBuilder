@@ -20,16 +20,11 @@ import { DraggableBlock } from "./draggable-block"
 import { RuleDropZone } from "./rule-drop-zone"
 import {
   blockConfigs,
-  conditionBlocks,
-  actionBlocks,
   tradingPairs,
   candleOptions as defaultCandleOptions,
   indicatorOptions as defaultIndicatorOptions,
   unitOptions as defaultUnitOptions,
-  channelOptions as defaultChannelOptions,
   runIntervalOptions,
-  type BlockConfig,
-  type BlockCategory,
   STATIC_SYSTEM_PROMPT_V1,
   leverageOptions,
 } from "./block-types"
@@ -37,10 +32,11 @@ import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
-import { BlockType, CustomTheme, IndicatorOption, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate } from "../types"
+import { BlockCategory, BlockConfig, BlockType, ConditionBlockType, ActionBlockType, CustomTheme, IndicatorOption, Parameter, PredefinedStrategyTemplate, StrategyBuilderProps, StrategyTemplate } from "../types"
 
 interface CanvasItem {
   id: string
+  blockType: BlockType
   config: BlockConfig
   values: Record<string, string | number>
 }
@@ -62,42 +58,49 @@ interface StrategyJsonResult {
  * Creates a modified blockConfigs object with custom options
  */
 function createCustomBlockConfigs(
+  configOptions: Record<BlockType, BlockConfig>,
   candleOpts: string[],
   indicatorOpts: IndicatorOption[],
-  unitOpts: string[],
-  channelOpts: string[]
+  unitOpts: string[]
 ): Record<BlockType, BlockConfig> {
   const customConfigs: Record<BlockType, BlockConfig> = {} as Record<BlockType, BlockConfig>
 
   // Deep clone each block config while preserving the icon reference
-  for (const blockType of Object.keys(blockConfigs) as BlockType[]) {
-    const original = blockConfigs[blockType]
+  for (const blockType of Object.keys(configOptions) as BlockType[]) {
+    const original = configOptions[blockType]
     customConfigs[blockType] = {
       ...original,
       icon: original.icon, // Preserve the icon component reference
-      parameters: original.parameters.map((param) => {
-        // Update timeframe options
-        if (param.name === "timeframe1" || param.name === "timeframe2") {
-          return { ...param, options: candleOpts }
-        }
-        // Update indicator options
-        if (param.name === "indicator1" || param.name === "indicator2") {
-          return { ...param, indicatorOptions: indicatorOpts }
-        }
-        // Update unit options
-        if (param.name === "unit") {
-          return { ...param, options: unitOpts }
-        }
-        // Update channel options
-        if (param.name === "channel") {
-          return { ...param, options: channelOpts }
-        }
-        return { ...param }
-      }),
+      parameters: original.parameters.map((row) =>
+        row.map((param) => {
+          // Update timeframe options
+          if (param.name.includes("timeframe")) {
+            return { ...param, options: candleOpts }
+          }
+          // Update indicator options
+          if (param.type === "indicator") {
+            return { ...param, indicatorOptions: indicatorOpts }
+          }
+          // Update unit options
+          if (param.name === "unit") {
+            return { ...param, options: unitOpts }
+          }
+          return { ...param }
+        })
+      ),
     }
   }
 
   return customConfigs
+}
+
+function parseOptionsToValues(opts: Record<string, any>): Record<string, string | number> {
+  const values: Record<string, string | number> = {}
+  for (const key of Object.keys(opts)) {
+    const val = opts[key]
+    values[key] = typeof val === "number" ? val : val || ""
+  }
+  return values
 }
 
 function parseStrategyToRuleGroups(
@@ -119,30 +122,11 @@ function parseStrategyToRuleGroups(
           return null
         }
 
-        const values: Record<string, string | number> = {}
-
-        if (blockType === "increased-by" || blockType === "decreased-by") {
-          values.indicator1 = condition.indicator1 || ""
-          values.timeframe1 = condition.timeframe1 || ""
-          values.value = condition.value || ""
-        } else if (
-          blockType === "crossing-above" ||
-          blockType === "crossing-below" ||
-          blockType === "greater-than" ||
-          blockType === "lower-than"
-        ) {
-          values.indicator1 = condition.indicator1 || ""
-          values.timeframe1 = condition.timeframe1 || ""
-          values.indicator2 = condition.indicator2 || ""
-          values.timeframe2 = condition.timeframe2 || ""
-          // Handle "Value" indicator2 case
-          if (condition.indicator2 === "Value" && condition.value !== undefined) {
-            values.value = condition.value
-          }
-        }
+        const values = parseOptionsToValues(condition.options || {})
 
         return {
           id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          blockType,
           config,
           values,
         }
@@ -151,50 +135,15 @@ function parseStrategyToRuleGroups(
 
     const actionItems: CanvasItem[] = (rule.actions || [])
       .map((action: any) => {
-        let blockType: BlockType
-        if (action.action === "OPEN") {
-          blockType = "open-position"
-        } else if (action.action === "CLOSE") {
-          blockType = "close-position"
-        } else if (action.action === "BUY") {
-          blockType = "buy"
-        } else if (action.action === "SELL") {
-          blockType = "sell"
-        } else if (action.action === "NOTIFY") {
-          blockType = "notify-me"
-        } else {
-          return null
-        }
-
+        const blockType = action.action as BlockType
         const config = configs[blockType]
         if (!config) return null
 
-        const values: Record<string, string | number> = {}
-        if (action.options) {
-          if (blockType === "open-position") {
-            values.side = action.options.side || "LONG"
-            values.amount = action.options.amount || ""
-            values.unit = action.options.unit || "USD"
-            values.leverage = action.options.leverage || "1x"
-            values.stopLoss = action.options.stopLoss ?? 0
-            values.takeProfit = action.options.takeProfit ?? 0
-            values.trailingStop = action.options.trailingStop ?? 0
-          } else if (blockType === "close-position") {
-            // No parameters for close-position
-          } else if (blockType === "buy" || blockType === "sell") {
-            values.amount = action.options.amount || ""
-            values.unit = action.options.unit || "USD"
-            values.stopLoss = action.options.stopLoss ?? 0
-            values.takeProfit = action.options.takeProfit ?? 0
-            values.trailingStop = action.options.trailingStop ?? 0
-          } else if (blockType === "notify-me") {
-            values.channel = action.options.channel || ""
-            values.message = action.options.message || ""
-          }
-        }
+        const values = parseOptionsToValues(action.options || {})
 
         return {
           id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          blockType,
           config,
           values,
         }
@@ -220,13 +169,12 @@ function parseStrategyToRuleGroups(
 }
 
 export function StrategyBuilder({
-  strategyId,
+  initialStrategy,
   candleOptions = defaultCandleOptions,
   indicatorOptions = defaultIndicatorOptions,
   unitOptions = defaultUnitOptions,
-  channelOptions = defaultChannelOptions,
+  configOptions = blockConfigs,
   predefinedStrategies = [],
-  getStrategyById,
   onSave,
   themeOverride,
   supportedAIModels = ['grok'],
@@ -235,9 +183,22 @@ export function StrategyBuilder({
 
   // Create custom block configs with the provided options (memoized to prevent infinite loops)
   const customBlockConfigs = useMemo(
-    () => createCustomBlockConfigs(candleOptions, indicatorOptions, unitOptions, channelOptions),
-    [candleOptions, indicatorOptions, unitOptions, channelOptions]
+    () => createCustomBlockConfigs(configOptions, candleOptions, indicatorOptions, unitOptions),
+    [configOptions, candleOptions, indicatorOptions, unitOptions]
   )
+
+  // Calculate condition and action blocks dynamically based on configOptions
+  const { conditionBlocks, actionBlocks } = useMemo(() => {
+    const conditionBlocks: ConditionBlockType[] = Object.entries(configOptions)
+      .filter(([_, config]) => config.category === "condition")
+      .map(([key]) => key as ConditionBlockType)
+
+    const actionBlocks: ActionBlockType[] = Object.entries(configOptions)
+      .filter(([_, config]) => config.category === "action")
+      .map(([key]) => key as ActionBlockType)
+
+    return { conditionBlocks, actionBlocks }
+  }, [configOptions])
 
   const [strategyName, setStrategyName] = useState("New Strategy")
   const [selectedPairs, setSelectedPairs] = useState<string[]>(["BTC/USD"])
@@ -246,6 +207,7 @@ export function StrategyBuilder({
     { id: "rule-2", name: "Sell Rule", conditionItems: [], actionItems: [] },
   ])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeBlockType, setActiveBlockType] = useState<BlockType | null>(null)
   const [activeConfig, setActiveConfig] = useState<BlockConfig | null>(null)
   const [previewJson, setPreviewJson] = useState<string | null>(null)
   const [pairPopoverOpen, setPairPopoverOpen] = useState(false)
@@ -259,7 +221,7 @@ export function StrategyBuilder({
     groupId: string
     category: BlockCategory
   } | null>(null)
-  const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(strategyId || null)
+  const [currentStrategyId, setCurrentStrategyId] = useState<string | null>(initialStrategy?.strategyId || null)
 
   // AI Builder state
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
@@ -274,7 +236,7 @@ export function StrategyBuilder({
   const [maximumExecuteCount, setMaximumExecuteCount] = useState<number>(10)
   const [intervalBetweenExecutionsMinutes, setIntervalBetweenExecutionsMinutes] = useState<number>(60) // Default: 1 hour
   const [maximumOpenPositions, setMaximumOpenPositions] = useState<number>(1)
-  const [isEditingDetails, setIsEditingDetails] = useState(false)
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
 
   // Helper to get interval label from minutes value
   const getIntervalLabel = (minutes: number) => {
@@ -309,19 +271,11 @@ export function StrategyBuilder({
   )
 
   useEffect(() => {
-    if (strategyId && getStrategyById) {
-      const savedStrategy = getStrategyById(strategyId)
-      if (savedStrategy) {
-        setCurrentStrategyId(strategyId)
-        loadStrategyFromJson({
-          executionOptions: savedStrategy.executionOptions,
-          strategyName: savedStrategy.strategyName,
-          symbols: savedStrategy.symbols,
-          rules: savedStrategy.rules,
-        })
-      }
+    if (initialStrategy) {
+      setCurrentStrategyId(initialStrategy.strategyId || null)
+      loadStrategyFromJson(initialStrategy)
     }
-  }, [strategyId, loadStrategyFromJson])
+  }, [initialStrategy, loadStrategyFromJson])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -334,6 +288,9 @@ export function StrategyBuilder({
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event
     setActiveId(String(active.id))
+    if (active.data.current?.blockType) {
+      setActiveBlockType(active.data.current.blockType)
+    }
     if (active.data.current?.config) {
       setActiveConfig(active.data.current.config)
     }
@@ -342,6 +299,7 @@ export function StrategyBuilder({
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
+    setActiveBlockType(null)
     setActiveConfig(null)
 
     if (!over) return
@@ -349,7 +307,7 @@ export function StrategyBuilder({
     const overId = String(over.id)
 
     if (String(active.id).startsWith("sidebar-")) {
-      const blockType = active.data.current?.type as BlockType
+      const blockType = active.data.current?.blockType as BlockType
       const config = customBlockConfigs[blockType]
 
       // Check if dropping to conditions or actions
@@ -366,14 +324,18 @@ export function StrategyBuilder({
 
       const newItem: CanvasItem = {
         id: `item-${Date.now()}`,
+        blockType,
         config,
         values: {},
       }
 
-      config.parameters.forEach((param) => {
-        if (param.default !== undefined) {
-          newItem.values[param.name] = param.default
-        }
+      // Flatten 2D parameters array and set default values
+      config.parameters.forEach((row) => {
+        row.forEach((param) => {
+          if (param.default !== undefined) {
+            newItem.values[param.name] = param.default
+          }
+        })
       })
 
       setRuleGroups((prev) =>
@@ -518,121 +480,71 @@ export function StrategyBuilder({
       errors.push("At least one rule with conditions or actions is required")
     }
 
+    // Helper to check if a parameter is visible based on showWhen/hideWhen
+    const isParamVisible = (param: Parameter, values: Record<string, string | number>): boolean => {
+      if (param.showWhen) {
+        const dependentValue = values[param.showWhen.param]
+        if (dependentValue !== param.showWhen.equals) {
+          return false
+        }
+      }
+      if (param.hideWhen) {
+        const dependentValue = values[param.hideWhen.param]
+        if (dependentValue === param.hideWhen.equals) {
+          return false
+        }
+      }
+      return true
+    }
+
+    // Generic function to validate and extract options from an item
+    const processItem = (
+      item: CanvasItem,
+      itemIndex: number,
+      blockLabel: string,
+      typeKey: "type" | "action"
+    ): Record<string, any> => {
+      const options: Record<string, any> = {}
+
+      // Flatten and iterate all parameters
+      for (const row of item.config.parameters) {
+        for (const param of row) {
+          // Skip label type parameters - they are for display only
+          if (param.type === "label") continue
+
+          const isVisible = isParamVisible(param, item.values)
+          const value = item.values[param.name]
+
+          // Check required validation only for visible parameters
+          if (param.required && isVisible) {
+            if (value === undefined || value === "") {
+              errors.push(`${blockLabel}: ${param.label} is required`)
+            }
+          }
+
+          // Only include visible parameters in output
+          if (isVisible && value !== undefined && value !== "") {
+            options[param.name] = item.values[param.name]
+          }
+        }
+      }
+
+      return {
+        index: itemIndex,
+        [typeKey]: item.blockType,
+        options,
+      }
+    }
+
     const rules = ruleGroups.map((group) => {
       const conditions = group.conditionItems.map((item, itemIndex) => {
-        const condition: Record<string, any> = {
-          index: itemIndex,
-          type: item.config.type,
-        }
-
         const blockLabel = `${group.name}, Condition ${itemIndex + 1} (${item.config.label})`
-
-        if (
-          item.config.type === "crossing-above" ||
-          item.config.type === "crossing-below" ||
-          item.config.type === "greater-than" ||
-          item.config.type === "lower-than"
-        ) {
-          if (!item.values.indicator1) errors.push(`${blockLabel}: First indicator is required`)
-          if (!item.values.timeframe1) errors.push(`${blockLabel}: First candles timeframe is required`)
-          if (!item.values.indicator2) errors.push(`${blockLabel}: Second indicator is required`)
-          
-          condition.indicator1 = item.values.indicator1
-          condition.timeframe1 = item.values.timeframe1
-          condition.indicator2 = item.values.indicator2
-          
-          // Handle special "Value" case for indicator2
-          if (item.values.indicator2 === "Value") {
-            if (item.values.value === undefined || item.values.value === "")
-              errors.push(`${blockLabel}: Value is required when using Value indicator`)
-            condition.value = item.values.value
-          } else {
-            if (!item.values.timeframe2) errors.push(`${blockLabel}: Second candles timeframe is required`)
-            condition.timeframe2 = item.values.timeframe2
-          }
-        } else if (item.config.type === "increased-by" || item.config.type === "decreased-by") {
-          if (!item.values.indicator1) errors.push(`${blockLabel}: Indicator is required`)
-          if (!item.values.timeframe1) errors.push(`${blockLabel}: Candles timeframe is required`)
-          if (item.values.value === undefined || item.values.value === "")
-            errors.push(`${blockLabel}: Percentage value is required`)
-          condition.indicator1 = item.values.indicator1
-          condition.timeframe1 = item.values.timeframe1
-          condition.value = item.values.value
-        }
-        return condition
+        return processItem(item, itemIndex, blockLabel, "type")
       })
 
       const actions = group.actionItems.map((item, itemIndex) => {
         const blockLabel = `${group.name}, Action ${itemIndex + 1} (${item.config.label})`
-
-        if (item.config.type === "open-position") {
-          if (!item.values.side) errors.push(`${blockLabel}: Side is required`)
-          if (item.values.amount === undefined || item.values.amount === "")
-            errors.push(`${blockLabel}: Amount is required`)
-          if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
-          return {
-            index: itemIndex,
-            action: "OPEN" as const,
-            options: {
-              side: item.values.side,
-              amount: item.values.amount,
-              unit: item.values.unit,
-              leverage: item.values.leverage,
-              stopLoss: item.values.stopLoss,
-              takeProfit: item.values.takeProfit,
-              trailingStop: item.values.trailingStop,
-            },
-          }
-        } else if (item.config.type === "close-position") {
-          // No parameters for close-position
-          return {
-            index: itemIndex,
-            action: "CLOSE" as const,
-            options: {},
-          }
-        } else if (item.config.type === "buy") {
-          if (item.values.amount === undefined || item.values.amount === "")
-            errors.push(`${blockLabel}: Amount is required`)
-          if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
-          return {
-            index: itemIndex,
-            action: "BUY" as const,
-            options: {
-              amount: item.values.amount,
-              unit: item.values.unit,
-              stopLoss: item.values.stopLoss,
-              takeProfit: item.values.takeProfit,
-              trailingStop: item.values.trailingStop,
-            },
-          }
-        } else if (item.config.type === "sell") {
-          if (item.values.amount === undefined || item.values.amount === "")
-            errors.push(`${blockLabel}: Amount is required`)
-          if (!item.values.unit) errors.push(`${blockLabel}: Unit is required`)
-          return {
-            index: itemIndex,
-            action: "SELL" as const,
-            options: {
-              amount: item.values.amount,
-              unit: item.values.unit,
-              stopLoss: item.values.stopLoss,
-              takeProfit: item.values.takeProfit,
-              trailingStop: item.values.trailingStop,
-            },
-          }
-        } else if (item.config.type === "notify-me") {
-          if (!item.values.channel) errors.push(`${blockLabel}: Channel is required`)
-          if (!item.values.message) errors.push(`${blockLabel}: Message is required`)
-          return {
-            index: itemIndex,
-            action: "NOTIFY" as const,
-            options: {
-              channel: item.values.channel,
-              message: item.values.message,
-            },
-          }
-        }
-        return { index: itemIndex, action: "UNKNOWN", options: {} }
+        return processItem(item, itemIndex, blockLabel, "action")
       })
 
       return {
@@ -738,10 +650,11 @@ export function StrategyBuilder({
     if (!mobileBlockPickerTarget) return
 
     const config = customBlockConfigs[blockType]
-    const newItem = {
+    const newItem: CanvasItem = {
       id: `canvas-${Date.now()}`,
+      blockType,
       config,
-      values: config.parameters.reduce(
+      values: config.parameters.flat().reduce(
         (acc, param) => {
           acc[param.name] = param.default || ""
           return acc
@@ -817,39 +730,143 @@ export function StrategyBuilder({
         </div>
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <CardTitle className="text-lg">Strategy Details</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsEditingDetails(!isEditingDetails)}
+                onClick={() => setDetailsDialogOpen(true)}
                 className="gap-1.5 h-7 text-xs"
               >
                 <Pencil className="h-3.5 w-3.5" />
-                {isEditingDetails ? "Done" : "Edit"}
               </Button>
             </div>
-            {!isEditingDetails && (
-              <p className="text-sm text-muted-foreground mt-2">
-                <span className="font-medium text-foreground">{strategyName || "Unnamed Strategy"}</span>
-                {" trades on "}
-                <span className="font-medium text-foreground">
-                  {selectedPairs.length > 0 ? selectedPairs.join(", ") : "no pairs selected"}
-                </span>
-                {". Checked every "}
-                <span className="font-medium text-foreground">{getIntervalLabel(runIntervalMinutes)}</span>
-                {", up to "}
-                <span className="font-medium text-foreground">{maximumExecuteCount} executions</span>
-                {" with "}
-                <span className="font-medium text-foreground">{getIntervalLabel(intervalBetweenExecutionsMinutes)}</span>
-                {" between each. Max "}
-                <span className="font-medium text-foreground">{maximumOpenPositions} open position{maximumOpenPositions !== 1 ? "s" : ""}</span>
-                {"."}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground mt-2">
+              <span className="font-medium text-foreground">{strategyName || "Unnamed Strategy"}</span>
+              {" trades on "}
+              <span className="font-medium text-foreground">
+                {selectedPairs.length > 0 ? selectedPairs.join(", ") : "no pairs selected"}
+              </span>
+              {". Checked every "}
+              <span className="font-medium text-foreground">{getIntervalLabel(runIntervalMinutes)}</span>
+              {", up to "}
+              <span className="font-medium text-foreground">{maximumExecuteCount} executions</span>
+              {" with "}
+              <span className="font-medium text-foreground">{getIntervalLabel(intervalBetweenExecutionsMinutes)}</span>
+              {" between each. Max "}
+              <span className="font-medium text-foreground">{maximumOpenPositions} open position{maximumOpenPositions !== 1 ? "s" : ""}</span>
+              {"."}
+            </p>
           </CardHeader>
-          {isEditingDetails && (
-          <CardContent className="space-y-4">
+        </Card>
+        <div className="grid gap-6 lg:grid-cols-[300px_1fr] max-w-screen-2xl">
+          <div className="space-y-6 hidden lg:block">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Building Blocks</CardTitle>
+                <div className="flex gap-1 mt-2">
+                  <Button
+                    variant={blockCategory === "condition" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBlockCategory("condition")}
+                    className={`flex-1 ${blockCategory === "condition" ? "" : "bg-transparent"}`}
+                  >
+                    Conditions
+                  </Button>
+                  <Button
+                    variant={blockCategory === "action" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBlockCategory("action")}
+                    className={`flex-1 ${blockCategory === "action" ? "" : "bg-transparent"}`}
+                  >
+                    Actions
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {displayedBlocks.map((blockType) => (
+                  <DraggableBlock key={blockType} id={`sidebar-${blockType}`} blockType={blockType} config={customBlockConfigs[blockType]} themeOverride={themeOverride} />
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-foreground">Rules</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addRuleGroup}
+                  className="gap-2 border-primary text-primary hover:bg-primary/10 bg-transparent"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Rule
+                </Button>
+              </div>
+              <div className="space-y-4">
+                {ruleGroups.map((group) => (
+                  <RuleDropZone
+                    key={group.id}
+                    id={group.id}
+                    name={group.name}
+                    onNameChange={(newName) => handleRuleNameChange(group.id, newName)}
+                    conditionItems={group.conditionItems}
+                    actionItems={group.actionItems}
+                    onRemoveBlock={(itemId, category) => handleRemoveBlock(group.id, itemId, category)}
+                    onValueChange={(itemId, name, value, category) =>
+                      handleValueChange(group.id, itemId, name, value, category)
+                    }
+                    onDelete={() => removeRuleGroup(group.id)}
+                    canDelete={ruleGroups.length > 1}
+                    onMobileDropZoneClick={handleMobileDropZoneClick}
+                    themeOverride={themeOverride}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {previewJson && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg bg-card p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Strategy JSON Preview</h3>
+              <Button variant="ghost" size="sm" onClick={() => setPreviewJson(null)}>
+                Close
+              </Button>
+            </div>
+            <pre className="overflow-auto rounded-lg bg-muted p-4 text-sm">
+              <code>{previewJson}</code>
+            </pre>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(previewJson)
+                  alert("Copied to clipboard!")
+                }}
+              >
+                Copy to Clipboard
+              </Button>
+              <Button size="sm" onClick={() => setPreviewJson(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Strategy Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="strategy-name">Strategy Name</Label>
               <Input
@@ -971,110 +988,15 @@ export function StrategyBuilder({
                 </div>
               </div>
             </div>
-          </CardContent>
-          )}
-        </Card>
-        <div className="grid gap-6 lg:grid-cols-[300px_1fr] max-w-screen-2xl">
-          <div className="space-y-6 hidden lg:block">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Building Blocks</CardTitle>
-                <div className="flex gap-1 mt-2">
-                  <Button
-                    variant={blockCategory === "condition" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBlockCategory("condition")}
-                    className={`flex-1 ${blockCategory === "condition" ? "" : "bg-transparent"}`}
-                  >
-                    Conditions
-                  </Button>
-                  <Button
-                    variant={blockCategory === "action" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBlockCategory("action")}
-                    className={`flex-1 ${blockCategory === "action" ? "" : "bg-transparent"}`}
-                  >
-                    Actions
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {displayedBlocks.map((blockType) => (
-                  <DraggableBlock key={blockType} id={`sidebar-${blockType}`} config={customBlockConfigs[blockType]} themeOverride={themeOverride} />
-                ))}
-              </CardContent>
-            </Card>
-          </div>
 
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-foreground">Rules</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={addRuleGroup}
-                  className="gap-2 border-primary text-primary hover:bg-primary/10 bg-transparent"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Rule
-                </Button>
-              </div>
-              <div className="space-y-4">
-                {ruleGroups.map((group) => (
-                  <RuleDropZone
-                    key={group.id}
-                    id={group.id}
-                    name={group.name}
-                    onNameChange={(newName) => handleRuleNameChange(group.id, newName)}
-                    conditionItems={group.conditionItems}
-                    actionItems={group.actionItems}
-                    onRemoveBlock={(itemId, category) => handleRemoveBlock(group.id, itemId, category)}
-                    onValueChange={(itemId, name, value, category) =>
-                      handleValueChange(group.id, itemId, name, value, category)
-                    }
-                    onDelete={() => removeRuleGroup(group.id)}
-                    canDelete={ruleGroups.length > 1}
-                    onMobileDropZoneClick={handleMobileDropZoneClick}
-                    themeOverride={themeOverride}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {previewJson && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg bg-card p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Strategy JSON Preview</h3>
-              <Button variant="ghost" size="sm" onClick={() => setPreviewJson(null)}>
-                Close
-              </Button>
-            </div>
-            <pre className="overflow-auto rounded-lg bg-muted p-4 text-sm">
-              <code>{previewJson}</code>
-            </pre>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(previewJson)
-                  alert("Copied to clipboard!")
-                }}
-              >
-                Copy to Clipboard
-              </Button>
-              <Button size="sm" onClick={() => setPreviewJson(null)}>
-                Close
+            <div className="flex justify-end pt-2">
+              <Button size="sm" onClick={() => setDetailsDialogOpen(false)}>
+                Done
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {importDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -1191,7 +1113,9 @@ export function StrategyBuilder({
                       candleOptions,
                       unitOptions,
                       leverageOptions.map(option => option.label),
+                      customBlockConfigs
                     )
+                    console.log("System Prompt:", systemPrompt)
                     const result = await callAIFunction(systemPrompt, [aiPrompt], selectedAIModel)
                     setAiGeneratedJson(result)
                   } catch (error) {
@@ -1357,8 +1281,8 @@ export function StrategyBuilder({
       </Dialog>
 
       <DragOverlay>
-        {activeId && activeConfig && (
-          <DragOverlayContent config={activeConfig} themeOverride={themeOverride} />
+        {activeId && activeBlockType && activeConfig && (
+          <DragOverlayContent blockType={activeBlockType} config={activeConfig} themeOverride={themeOverride} />
         )}
       </DragOverlay>
     </DndContext>
@@ -1366,8 +1290,8 @@ export function StrategyBuilder({
 }
 
 // Separate component for DragOverlay content to avoid IIFE
-function DragOverlayContent({ config, themeOverride }: { config: BlockConfig; themeOverride?: CustomTheme }) {
-  const blockTheme = themeOverride?.blocks?.[config.type]
+function DragOverlayContent({ blockType, config, themeOverride }: { blockType: BlockType; config: BlockConfig; themeOverride?: CustomTheme }) {
+  const blockTheme = themeOverride?.blocks?.[blockType]
   const effectiveColor = blockTheme?.color ?? config.color
   const effectiveBgColor = blockTheme?.bgColor ?? config.bgColor
   

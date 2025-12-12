@@ -26,9 +26,9 @@ The package requires these peer dependencies:
 ```json
 {
   "peerDependencies": {
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "next": "16.0.7"
+    "react": "^19.x",
+    "react-dom": "^19.x",
+    "next": "^16.x"
   }
 }
 ```
@@ -44,7 +44,19 @@ npm install react react-dom next
 
 ### 1. Tailwind CSS Setup (Required)
 
-Add the package to your Tailwind content paths:
+Add the package to your Tailwind content paths. Choose one method:
+
+**Method A: Using `@source` in globals.css (Recommended)**
+
+```css
+/* globals.css */
+@import "tailwindcss";
+
+/* Add this line to include the package styles */
+@source "../node_modules/@palabola86/trade-strategy-builder/dist";
+```
+
+**Method B: Using tailwind.config.ts**
 
 ```typescript
 // tailwind.config.ts
@@ -133,14 +145,17 @@ export function saveStrategy(strategy: StrategyTemplate): void {
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
 import { getStrategyById, saveStrategy } from "@/lib/strategy-storage"
 import { useParams } from "next/navigation"
+import { useMemo } from "react"
 
 export default function EditStrategyPage() {
   const { id } = useParams<{ id: string }>()
+  
+  // Load strategy before rendering
+  const initialStrategy = useMemo(() => getStrategyById(id), [id])
 
   return (
     <StrategyBuilder
-      strategyId={id}
-      getStrategyById={getStrategyById}
+      initialStrategy={initialStrategy || undefined}
       onSave={saveStrategy}
     />
   )
@@ -155,33 +170,143 @@ export default function EditStrategyPage() {
 
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
 import type { StrategyTemplate } from "@palabola86/trade-strategy-builder"
-
-async function fetchStrategyById(id: string): Promise<StrategyTemplate | null> {
-  const res = await fetch(`/api/strategies/${id}`)
-  if (!res.ok) return null
-  return res.json()
-}
-
-async function saveStrategy(strategy: StrategyTemplate): Promise<void> {
-  await fetch("/api/strategies", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(strategy),
-  })
-}
+import { useEffect, useState } from "react"
 
 export default function StrategyPage({ strategyId }: { strategyId?: string }) {
+  const [initialStrategy, setInitialStrategy] = useState<StrategyTemplate | undefined>()
+  const [loading, setLoading] = useState(!!strategyId)
+
+  useEffect(() => {
+    if (strategyId) {
+      fetch(`/api/strategies/${strategyId}`)
+        .then(res => res.json())
+        .then(data => {
+          setInitialStrategy(data)
+          setLoading(false)
+        })
+        .catch(() => setLoading(false))
+    }
+  }, [strategyId])
+
+  const handleSave = async (strategy: StrategyTemplate) => {
+    await fetch("/api/strategies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(strategy),
+    })
+  }
+
+  if (loading) return <div>Loading...</div>
+
   return (
     <StrategyBuilder
-      strategyId={strategyId}
-      getStrategyById={fetchStrategyById}
-      onSave={saveStrategy}
+      initialStrategy={initialStrategy}
+      onSave={handleSave}
     />
   )
 }
 ```
 
-### Pattern 3: Custom Indicators & Timeframes
+### Pattern 3: Custom Block Configurations
+
+```tsx
+import { StrategyBuilder, blockConfigs, BlockConfig, BlockType } from "@palabola86/trade-strategy-builder"
+import { DollarSign, Banknote, Bell } from "lucide-react"
+
+// Define custom blocks
+const customBlockConfigs: Record<string, BlockConfig> = {
+  // Custom action block
+  "buy-limit": {
+    label: "Buy Limit",
+    description: "Place a buy limit order at a specified price",
+    promptDescription: "Buy limit order at limitPrice. stopLoss and takeProfit are optional.",
+    icon: DollarSign,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10 border-green-500/30",
+    category: "action",
+    // Parameters are a 2D array - each inner array becomes a row in the UI
+    parameters: [
+      // Row 1: Price settings
+      [
+        {
+          name: "limitPrice",
+          type: "number",
+          label: "Limit Price",
+          default: 0.5,
+          required: true,
+        },
+        {
+          name: "priceUnit",
+          type: "select",
+          label: "Unit",
+          options: ["USD", "%"],
+          default: "%",
+          required: true,
+        },
+      ],
+      // Row 2: Amount settings
+      [
+        {
+          name: "amount",
+          type: "number",
+          label: "Amount",
+          placeholder: "100",
+          default: 100,
+          required: true,
+        },
+        {
+          name: "amountUnit",
+          type: "select",
+          label: "Unit",
+          options: ["USD", "%"],
+          default: "USD",
+          required: true,
+        },
+      ],
+      // Row 3: Risk management
+      [
+        {
+          name: "stopLoss",
+          type: "number",
+          label: "Stop Loss (%)",
+          default: 0,
+        },
+        {
+          name: "takeProfit",
+          type: "number",
+          label: "Take Profit (%)",
+          default: 0,
+        },
+      ],
+    ],
+  },
+  // Custom condition block
+  "always": {
+    label: "Always Trigger",
+    description: "Always trigger the action regardless of conditions",
+    promptDescription: "Always triggers the associated action block unconditionally.",
+    icon: Bell,
+    color: "text-yellow-500",
+    bgColor: "bg-yellow-500/10 border-yellow-500/30",
+    category: "condition",
+    parameters: [], // No parameters needed
+  },
+}
+
+export default function CustomBlocksBuilder() {
+  return (
+    <StrategyBuilder
+      configOptions={{
+        ...blockConfigs,       // Include all default blocks
+        ...customBlockConfigs, // Add/override with custom blocks
+      }}
+      onSave={(s) => console.log(s)}
+    />
+  )
+}
+```
+
+### Pattern 4: Custom Indicators & Timeframes
 
 ```tsx
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
@@ -220,29 +345,26 @@ const timeframes = ["1min", "5min", "15min", "30min", "1h", "4h", "1d", "1w"]
 
 const units = ["USD", "EUR", "BTC", "%"]
 
-const channels = ["Telegram", "Discord", "Email", "Push"]
-
 export default function CustomBuilder() {
   return (
     <StrategyBuilder
       indicatorOptions={indicators}
       candleOptions={timeframes}
       unitOptions={units}
-      channelOptions={channels}
       onSave={(s) => console.log(s)}
     />
   )
 }
 ```
 
-### Pattern 4: AI Integration
+### Pattern 5: AI Integration
 
 ```tsx
 "use client"
 
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
 
-const AI_MODELS = ["gpt-4o", "gpt-4", "claude-3-opus", "claude-3-sonnet"]
+const AI_MODELS = ["gpt-4o", "gpt-4", "claude-3-opus", "claude-3-sonnet", "grok"]
 
 async function callAI(
   systemPrompt: string,
@@ -282,66 +404,128 @@ export default function AIStrategyBuilder() {
 
 ## 🎨 Theming Setup
 
-### Custom Theme Example
+### Block Theme Override
 
 ```tsx
 import { StrategyBuilder } from "@palabola86/trade-strategy-builder"
 import type { CustomTheme } from "@palabola86/trade-strategy-builder"
 
-// Dark mode friendly theme
-const darkTheme: CustomTheme = {
+// Grayscale theme
+const grayscaleTheme: CustomTheme = {
   blocks: {
-    // Condition blocks
-    "increased-by": {
-      color: "text-emerald-400",
-      bgColor: "bg-emerald-900/30 border-emerald-500/40",
-    },
-    "decreased-by": {
-      color: "text-rose-400",
-      bgColor: "bg-rose-900/30 border-rose-500/40",
-    },
-    "greater-than": {
-      color: "text-blue-400",
-      bgColor: "bg-blue-900/30 border-blue-500/40",
-    },
-    "lower-than": {
-      color: "text-purple-400",
-      bgColor: "bg-purple-900/30 border-purple-500/40",
-    },
-    "crossing-above": {
-      color: "text-cyan-400",
-      bgColor: "bg-cyan-900/30 border-cyan-500/40",
-    },
-    "crossing-below": {
-      color: "text-amber-400",
-      bgColor: "bg-amber-900/30 border-amber-500/40",
-    },
-    // Action blocks
-    "open-position": {
-      color: "text-green-400",
-      bgColor: "bg-green-900/30 border-green-500/40",
-    },
-    "close-position": {
-      color: "text-red-400",
-      bgColor: "bg-red-900/30 border-red-500/40",
-    },
-    "buy": {
-      color: "text-teal-400",
-      bgColor: "bg-teal-900/30 border-teal-500/40",
-    },
-    "sell": {
-      color: "text-orange-400",
-      bgColor: "bg-orange-900/30 border-orange-500/40",
-    },
-    "notify-me": {
-      color: "text-indigo-400",
-      bgColor: "bg-indigo-900/30 border-indigo-500/40",
-    },
+    "increased-by": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
+    "decreased-by": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
+    "greater-than": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
+    "lower-than": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
+    "crossing-above": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
+    "crossing-below": { color: "text-gray-600", bgColor: "bg-gray-100 border-gray-300" },
+    "open-position": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
+    "close-position": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
+    "buy": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
+    "sell": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
+    "notify-me": { color: "text-gray-700", bgColor: "bg-gray-200 border-gray-400" },
   },
 }
 
 export default function ThemedBuilder() {
-  return <StrategyBuilder themeOverride={darkTheme} />
+  return <StrategyBuilder themeOverride={grayscaleTheme} />
+}
+```
+
+### Dark Mode via CSS Variables
+
+Add dark mode support in your `globals.css`:
+
+```css
+/* Light mode (default) */
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #8a61ff;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #8a61ff;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #8a61ff;
+  --success: #22c55e;
+  --warning: #eab308;
+  --info: #3b82f6;
+}
+
+/* Dark mode - toggle .dark class on <html> */
+.dark {
+  --background: #16121f;
+  --foreground: #fff;
+  --card: #1f1b27;
+  --card-foreground: #fff;
+  --popover: #1f1b27;
+  --popover-foreground: #fff;
+  --primary: #8a61ff;
+  --primary-foreground: #fff;
+  --secondary: #686b8229;
+  --secondary-foreground: #fff;
+  --muted: #686b821f;
+  --muted-foreground: #9497a9;
+  --accent: #8a61ff;
+  --accent-foreground: #fff;
+  --destructive: #ff7386;
+  --destructive-foreground: #fff;
+  --border: #686b8252;
+  --input: #686b8229;
+  --ring: #8a61ff;
+  --success: #35df8d;
+  --warning: #ffcd60;
+  --info: #00adfe;
+}
+```
+
+Create a dark mode toggle:
+
+```tsx
+// components/dark-mode-toggle.tsx
+"use client"
+
+import { Moon, Sun } from "lucide-react"
+import { useEffect, useState } from "react"
+
+export function DarkModeToggle() {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme")
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    const initialDark = savedTheme === "dark" || (!savedTheme && prefersDark)
+    setIsDark(initialDark)
+    if (initialDark) document.documentElement.classList.add("dark")
+  }, [])
+
+  const toggleTheme = () => {
+    const newIsDark = !isDark
+    setIsDark(newIsDark)
+    document.documentElement.classList.toggle("dark", newIsDark)
+    localStorage.setItem("theme", newIsDark ? "dark" : "light")
+  }
+
+  return (
+    <button
+      onClick={toggleTheme}
+      className="p-2 rounded-md hover:bg-accent transition-colors"
+      aria-label="Toggle theme"
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  )
 }
 ```
 
@@ -374,16 +558,18 @@ const templates: PredefinedStrategyTemplate[] = [
             {
               index: 0,
               type: "crossing-above",
-              indicator1: "RSI(14)",
-              timeframe1: "1h",
-              indicator2: "Value",
-              value: 30,
+              options: {
+                indicator1: "RSI(14)",
+                timeframe1: "1h",
+                indicator2: "Value",
+                value: 30,
+              },
             },
           ],
           actions: [
             {
               index: 0,
-              action: "OPEN",
+              action: "open-position",
               options: {
                 side: "LONG",
                 amount: 100,
@@ -416,14 +602,16 @@ const templates: PredefinedStrategyTemplate[] = [
             {
               index: 0,
               type: "crossing-above",
-              indicator1: "EMA(20)",
-              timeframe1: "4h",
-              indicator2: "EMA(50)",
-              timeframe2: "4h",
+              options: {
+                indicator1: "EMA(20)",
+                timeframe1: "4h",
+                indicator2: "EMA(50)",
+                timeframe2: "4h",
+              },
             },
           ],
           actions: [
-            { index: 0, action: "BUY", options: { amount: 50, unit: "%" } },
+            { index: 0, action: "buy", options: { amount: 50, unit: "%" } },
           ],
         },
         {
@@ -432,14 +620,16 @@ const templates: PredefinedStrategyTemplate[] = [
             {
               index: 0,
               type: "crossing-below",
-              indicator1: "EMA(20)",
-              timeframe1: "4h",
-              indicator2: "EMA(50)",
-              timeframe2: "4h",
+              options: {
+                indicator1: "EMA(20)",
+                timeframe1: "4h",
+                indicator2: "EMA(50)",
+                timeframe2: "4h",
+              },
             },
           ],
           actions: [
-            { index: 0, action: "SELL", options: { amount: 100, unit: "%" } },
+            { index: 0, action: "sell", options: { amount: 100, unit: "%" } },
           ],
         },
       ],
@@ -458,13 +648,15 @@ export default function TemplatesBuilder() {
 
 - [ ] Package installed: `npm install @palabola86/trade-strategy-builder`
 - [ ] Peer dependencies verified: `react`, `react-dom`, `next`
-- [ ] Tailwind config updated with package path
+- [ ] Tailwind config updated with package path or `@source` directive
 - [ ] Strategy page created with `"use client"` directive
 - [ ] `onSave` callback implemented
-- [ ] (Optional) Custom indicators configured
-- [ ] (Optional) Strategy persistence implemented
+- [ ] (Optional) Custom block configurations defined
+- [ ] (Optional) Custom indicators/timeframes configured
+- [ ] (Optional) Strategy persistence implemented via `initialStrategy`
 - [ ] (Optional) AI integration configured
-- [ ] (Optional) Custom theme applied
+- [ ] (Optional) Custom theme applied via `themeOverride`
+- [ ] (Optional) Dark mode CSS variables defined
 - [ ] (Optional) Predefined templates added
 
 ---
@@ -473,16 +665,29 @@ export default function TemplatesBuilder() {
 
 ### Styles not working
 - Verify Tailwind content includes the package path
+- Check that `@source` directive is correct
 - Run `npm run build` to regenerate Tailwind CSS
 
 ### Hydration errors
 - Ensure `"use client"` directive is at the top of the file
 - Wrap localStorage access in `typeof window !== "undefined"` checks
+- Load `initialStrategy` before rendering, not in useEffect
 
 ### TypeScript errors
 - Import types with `import type { ... }` syntax
 - Ensure `@types/react` version matches React version
+- Check that custom block parameter names are unique
 
 ### Drag-and-drop not working
 - Check that `@dnd-kit/core` and `@dnd-kit/sortable` are not duplicated
 - These are bundled with the package, don't install separately
+
+### Custom blocks not appearing
+- Verify `category` is set to `"condition"` or `"action"`
+- Check that `configOptions` includes both `blockConfigs` and your custom blocks
+- Ensure icon is a valid LucideIcon component
+
+### Dark mode not working
+- Verify `.dark` class is being added to `<html>` element
+- Check CSS variables are defined in `.dark` selector
+- Ensure `@custom-variant dark` is set if using Tailwind v4
