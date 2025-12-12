@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import {Activity } from "lucide-react"
+import { DarkModeToggle } from "./dark-mode-toggle"
 
 export function Header() {
   return (
@@ -33,6 +34,8 @@ export function Header() {
             </Link>
           </nav>
         </div>
+
+        <DarkModeToggle />
       </div>
     </header>
   )

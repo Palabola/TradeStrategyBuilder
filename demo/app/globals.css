@@ -57,6 +57,60 @@
   --sidebar-ring: oklch(0.55 0.25 280);
 }
 
+/* ... existing imports and light theme variables ... */
+
+/* Dark mode color variables */
+.dark {
+  --background: oklch(0.1 0.01 280);
+  --foreground: oklch(0.95 0.01 280);
+  --card: oklch(0.15 0.01 280);
+  --card-foreground: oklch(0.95 0.01 280);
+  --popover: oklch(0.15 0.01 280);
+  --popover-foreground: oklch(0.95 0.01 280);
+  --primary: oklch(0.65 0.25 280);
+  --primary-foreground: oklch(0.1 0.01 280);
+  --secondary: oklch(0.2 0.01 280);
+  --secondary-foreground: oklch(0.95 0.01 280);
+  --muted: oklch(0.2 0.01 280);
+  --muted-foreground: oklch(0.6 0.01 280);
+  --accent: oklch(0.65 0.25 280);
+  --accent-foreground: oklch(0.1 0.01 280);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.95 0.01 280);
+  --border: oklch(0.25 0.01 280);
+  --input: oklch(0.25 0.01 280);
+  --ring: oklch(0.65 0.25 280);
+  --success: oklch(0.65 0.2 145);
+  --success-foreground: oklch(0.1 0.01 280);
+  --warning: oklch(0.75 0.18 85);
+  --warning-foreground: oklch(0.1 0.01 280);
+  --info: oklch(0.6 0.18 230);
+  --info-foreground: oklch(0.1 0.01 280);
+  --cyan: oklch(0.7 0.15 195);
+  --cyan-foreground: oklch(0.1 0.01 280);
+  --orange: oklch(0.7 0.18 50);
+  --orange-foreground: oklch(0.1 0.01 280);
+  --pink: oklch(0.65 0.2 350);
+  --pink-foreground: oklch(0.95 0.01 280);
+  --teal: oklch(0.65 0.15 175);
+  --teal-foreground: oklch(0.1 0.01 280);
+  --chart-1: oklch(0.65 0.25 280);
+  --chart-2: oklch(0.65 0.2 145);
+  --chart-3: oklch(0.65 0.22 25);
+  --chart-4: oklch(0.75 0.18 85);
+  --chart-5: oklch(0.6 0.15 230);
+  --sidebar: oklch(0.12 0.01 280);
+  --sidebar-foreground: oklch(0.95 0.01 280);
+  --sidebar-primary: oklch(0.65 0.25 280);
+  --sidebar-primary-foreground: oklch(0.1 0.01 280);
+  --sidebar-accent: oklch(0.18 0.01 280);
+  --sidebar-accent-foreground: oklch(0.95 0.01 280);
+  --sidebar-border: oklch(0.25 0.01 280);
+  --sidebar-ring: oklch(0.65 0.25 280);
+}
+
+/* ... rest of existing CSS ... */
+
 @theme inline {
   --font-sans: "Inter", "Geist", "Geist Fallback";
   --font-mono: "Geist Mono", "Geist Mono Fallback";
