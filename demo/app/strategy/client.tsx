@@ -314,7 +314,6 @@ export function StrategyPageClient({
     }  else {
       localStorage.removeItem('strategy-draft')
     }
-    console.log('Strategy updated:', strategy)
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI
@@ -544,8 +543,8 @@ export function StrategyPageClient({
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 w-full">
-        <div className="2xl:col-span-1">
+      <div className="grid grid-cols-1 2xl:grid-cols-10 gap-4 w-full">
+        <div className="2xl:col-span-6">
           <StrategyBuilder
             configOptions={configOptions}
             key={builderKey}
@@ -561,7 +560,7 @@ export function StrategyPageClient({
             callAIFunction={handleCallAI}
           />
         </div>
-        <div>
+        <div className="2xl:col-span-4">
           {/* Analysis Panel */}
           <AnalysisPanel 
             selectedStrategy={currentStrategy}

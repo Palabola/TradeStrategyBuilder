@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useMemo } from "react"
+import { useState, useCallback, useEffect, useMemo, useId } from "react"
 import {
   DndContext,
   type DragEndEvent,
@@ -232,6 +232,36 @@ export function StrategyBuilder({
   const [intervalBetweenExecutionsMinutes, setIntervalBetweenExecutionsMinutes] = useState<number>(60) // Default: 1 hour
   const [maximumOpenPositions, setMaximumOpenPositions] = useState<number>(1)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+
+  // Temporary state for Strategy Details dialog
+  const [tempStrategyName, setTempStrategyName] = useState<string>("")
+  const [tempSelectedPairs, setTempSelectedPairs] = useState<string[]>([])
+  const [tempRunIntervalMinutes, setTempRunIntervalMinutes] = useState<number>(60)
+  const [tempMaximumExecuteCount, setTempMaximumExecuteCount] = useState<number>(10)
+  const [tempIntervalBetweenExecutionsMinutes, setTempIntervalBetweenExecutionsMinutes] = useState<number>(60)
+  const [tempMaximumOpenPositions, setTempMaximumOpenPositions] = useState<number>(1)
+
+  // Handle Done button in Strategy Details dialog
+  const handleDetailsDialogDone = () => {
+    setStrategyName(tempStrategyName)
+    setSelectedPairs([...tempSelectedPairs])
+    setRunIntervalMinutes(tempRunIntervalMinutes)
+    setMaximumExecuteCount(tempMaximumExecuteCount)
+    setIntervalBetweenExecutionsMinutes(tempIntervalBetweenExecutionsMinutes)
+    setMaximumOpenPositions(tempMaximumOpenPositions)
+    setDetailsDialogOpen(false)
+  }
+
+  // Temporary handlers for Strategy Details dialog
+  const handleTempAddPair = (pair: string) => {
+    if (!tempSelectedPairs.includes(pair)) {
+      setTempSelectedPairs((prev) => [...prev, pair])
+    }
+  }
+
+  const handleTempRemovePair = (pair: string) => {
+    setTempSelectedPairs((prev) => prev.filter((p) => p !== pair))
+  }
 
   // Helper to get interval label from minutes value
   const getIntervalLabel = (minutes: number) => {
@@ -649,17 +679,6 @@ export function StrategyBuilder({
     setRuleGroups((prev) => prev.map((group) => (group.id === groupId ? { ...group, name: newName } : group)))
   }
 
-  const handleAddPair = (pair: string) => {
-    if (!selectedPairs.includes(pair)) {
-      setSelectedPairs((prev) => [...prev, pair])
-    }
-    setPairPopoverOpen(false)
-  }
-
-  const handleRemovePair = (pair: string) => {
-    setSelectedPairs((prev) => prev.filter((p) => p !== pair))
-  }
-
   const handleMobileDropZoneClick = (groupId: string, category: BlockCategory) => {
     setMobileBlockPickerTarget({ groupId, category })
     setMobileBlockPickerOpen(true)
@@ -699,8 +718,10 @@ export function StrategyBuilder({
 
   const displayedBlocks = blockCategory === "condition" ? conditionBlocks : actionBlocks
 
+  const id = useId()
+
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} id={id}>
       <div className="flex flex-col gap-4 w-full">
         <div className="flex flex-wrap lg:justify-end gap-2">
           <Button variant="outline" size="sm" onClick={handleReset} className="gap-2 bg-transparent">
@@ -890,23 +911,23 @@ export function StrategyBuilder({
               <Label htmlFor="strategy-name">Strategy Name</Label>
               <Input
                 id="strategy-name"
-                value={strategyName}
-                onChange={(e) => setStrategyName(e.target.value)}
+                value={tempStrategyName}
+                onChange={(e) => setTempStrategyName(e.target.value)}
                 placeholder="Enter strategy name"
               />
             </div>
             <div className="space-y-2">
               <Label>Trading Pairs</Label>
-              {selectedPairs.length > 0 && (
+              {tempSelectedPairs.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedPairs.map((pair) => (
+                  {tempSelectedPairs.map((pair) => (
                     <div
                       key={pair}
                       className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
                     >
                       <span>{pair}</span>
                       <button
-                        onClick={() => handleRemovePair(pair)}
+                        onClick={() => handleTempRemovePair(pair)}
                         className="hover:bg-primary/20 rounded-full p-0.5"
                       >
                         <X className="h-3 w-3" />
@@ -925,17 +946,17 @@ export function StrategyBuilder({
                 <PopoverContent className="w-48 p-2" align="start">
                   <div className="flex flex-col gap-1 max-h-60 overflow-auto">
                     {tradingPairs
-                      .filter((pair) => !selectedPairs.includes(pair))
+                      .filter((pair) => !tempSelectedPairs.includes(pair))
                       .map((pair) => (
                         <button
                           key={pair}
-                          onClick={() => handleAddPair(pair)}
+                          onClick={() => handleTempAddPair(pair)}
                           className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
                         >
                           {pair}
                         </button>
                       ))}
-                    {tradingPairs.filter((pair) => !selectedPairs.includes(pair)).length === 0 && (
+                    {tradingPairs.filter((pair) => !tempSelectedPairs.includes(pair)).length === 0 && (
                       <p className="text-sm text-muted-foreground px-3 py-2">All pairs selected</p>
                     )}
                   </div>
@@ -950,8 +971,8 @@ export function StrategyBuilder({
                 <div className="space-y-1.5">
                   <Label htmlFor="run-interval" className="text-xs text-muted-foreground">Check every</Label>
                   <Select
-                    value={String(runIntervalMinutes)}
-                    onValueChange={(value) => setRunIntervalMinutes(Number(value))}
+                    value={String(tempRunIntervalMinutes)}
+                    onValueChange={(value) => setTempRunIntervalMinutes(Number(value))}
                   >
                     <SelectTrigger id="run-interval" className="h-8 text-xs w-full">
                       <SelectValue />
@@ -971,16 +992,16 @@ export function StrategyBuilder({
                     id="max-executions"
                     type="number"
                     min={1}
-                    value={maximumExecuteCount}
-                    onChange={(e) => setMaximumExecuteCount(Number(e.target.value) || 1)}
+                    value={tempMaximumExecuteCount}
+                    onChange={(e) => setTempMaximumExecuteCount(Number(e.target.value) || 1)}
                     className="h-8 text-xs"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="interval-between" className="text-xs text-muted-foreground">Wait Between Executions</Label>
                   <Select
-                    value={String(intervalBetweenExecutionsMinutes)}
-                    onValueChange={(value) => setIntervalBetweenExecutionsMinutes(Number(value))}
+                    value={String(tempIntervalBetweenExecutionsMinutes)}
+                    onValueChange={(value) => setTempIntervalBetweenExecutionsMinutes(Number(value))}
                   >
                     <SelectTrigger id="interval-between" className="h-8 text-xs w-full">
                       <SelectValue />
@@ -1000,8 +1021,8 @@ export function StrategyBuilder({
                     id="max-positions"
                     type="number"
                     min={1}
-                    value={maximumOpenPositions}
-                    onChange={(e) => setMaximumOpenPositions(Number(e.target.value) || 1)}
+                    value={tempMaximumOpenPositions}
+                    onChange={(e) => setTempMaximumOpenPositions(Number(e.target.value) || 1)}
                     className="h-8 text-xs"
                   />
                 </div>
@@ -1009,7 +1030,7 @@ export function StrategyBuilder({
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button size="sm" onClick={() => setDetailsDialogOpen(false)}>
+              <Button size="sm" onClick={handleDetailsDialogDone}>
                 Done
               </Button>
             </div>
