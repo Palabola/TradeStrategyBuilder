@@ -9,54 +9,52 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
     name: "Buy the Dip!",
     description: "Buy ETH and BTC when price drops at least 1% in 24 hours",
     strategy: {
-  strategyId: "5b85b5c1-02cb-4156-98c8-d0e85622ad04",
-  strategyName: "Buy the Dip",
-  symbols: [
-    "BTC/USD",
-    "ETH/USD"
-  ],
-  executionOptions: {
-    runIntervalMinutes: 60,
-    maximumExecuteCount: 10,
-    intervalBetweenExecutionsMinutes: 60,
-    maximumOpenPositions: 1
-  },
-  rules: [
-    {
-      name: "Buy the Dip",
-      conditions: [
-        {
-          index: 0,
-          type: "decreased-by",
-          options: {
-            indicator1: "Price",
-            timeframe1: "24h",
-            value: 5
-          }
-        }
+      strategyName: "Buy the Dip",
+      symbols: [
+        "BTC/USD",
+        "ETH/USD"
       ],
-      actions: [
-        {
-          index: 0,
-          action: "buy",
-          options: {
-            amount: 25,
-            unit: "USD",
-            takeProfit: 10,
-            trailingStop: 5
+      executionOptions: {
+        runIntervalMinutes: 60,
+        maximumExecuteCount: 10,
+        intervalBetweenExecutionsMinutes: 60,
+        maximumOpenPositions: 1
+      },
+      rules: [
+      {
+        name: "Buy the Dip",
+        conditions: [
+          {
+            index: 0,
+            type: "decreased-by",
+            options: {
+              indicator1: "Price",
+              timeframe1: "24h",
+              value: 5
+            }
           }
-        }
+        ],
+        actions: [
+          {
+            index: 0,
+            action: "buy",
+            options: {
+              amount: 25,
+              unit: "USD",
+              takeProfit: 10,
+              trailingStop: 5
+            }
+          }
+        ]
+      }
       ]
     }
-  ]
-}
   },
   {
     id: "2",
     name: "Buy HIGH, Sell LOW",
     description: "The best trading strategy,trust me bro.",
     strategy: {
-      strategyId: "c7807204-2132-43ef-a23c-76d8d557dc7f",
       strategyName: "Buy High sell low",
       symbols: [
         "BTC/USD",
@@ -64,7 +62,7 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
         "SOL/USD"
       ],
       executionOptions: {
-        runIntervalMinutes: 15,
+        runIntervalMinutes: 60,
         maximumExecuteCount: 100,
         intervalBetweenExecutionsMinutes: 15,
         maximumOpenPositions: 10
@@ -136,5 +134,170 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
         }
       ]
     }
-  }
+  }, {
+    id: "3",
+    name: "10x Leverage Futures",
+    description: "A comprehensive trading strategy using EMA and RSI indicators with 10x leverage on ETH and BTC.",
+    strategy: {
+      strategyName: "Complex 10x Leverage Strategy for ETH and BTC",
+      symbols: [
+        "ETH/USD",
+        "BTC/USD"
+      ],
+      executionOptions: {
+        runIntervalMinutes: 15,
+        maximumExecuteCount: 50,
+        intervalBetweenExecutionsMinutes: 30,
+        maximumOpenPositions: 3
+      },
+      rules: [
+        {
+          name: "Entry on Bullish Crossover",
+          conditions: [
+            {
+              index: 0,
+              type: "crossing-above",
+              options: {
+                indicator1: "EMA(20)",
+                timeframe1: "1h",
+                indicator2: "EMA(50)",
+                timeframe2: "1h"
+          }
+        },
+        {
+          index: 1,
+          type: "greater-than",
+          options: {
+            indicator1: "RSI(14)",
+            timeframe1: "1h",
+            indicator2: "Value",
+            value: 50
+          }
+        }
+      ],
+      actions: [
+        {
+          index: 0,
+          action: "open-position",
+          options: {
+            side: "LONG",
+            amount: 30,
+            unit: "%",
+            leverage: "10x",
+            stopLoss: 2,
+            takeProfit: 5
+          }
+        }
+      ]
+    },
+    {
+      name: "Entry on Bearish Crossover for Short",
+      conditions: [
+        {
+          index: 0,
+          type: "crossing-below",
+          options: {
+            indicator1: "EMA(20)",
+            timeframe1: "1h",
+            indicator2: "EMA(50)",
+            timeframe2: "1h"
+          }
+        },
+        {
+          index: 1,
+          type: "lower-than",
+          options: {
+            indicator1: "RSI(14)",
+            timeframe1: "1h",
+            indicator2: "Value",
+            value: 50
+          }
+        }
+      ],
+      actions: [
+        {
+          index: 0,
+          action: "open-position",
+          options: {
+            side: "SHORT",
+            amount: 30,
+            unit: "%",
+            leverage: "10x",
+            stopLoss: 2,
+            takeProfit: 5
+          }
+        }
+      ]
+    },
+    {
+      name: "Exit on Overbought RSI",
+      conditions: [
+        {
+          index: 0,
+          type: "greater-than",
+          options: {
+            indicator1: "RSI(14)",
+            timeframe1: "1h",
+            indicator2: "Value",
+            value: 70
+          }
+        }
+      ],
+      actions: [
+        {
+          index: 0,
+          action: "close-position",
+          options: {}
+        }
+      ]
+    },
+    {
+      name: "Exit on Oversold RSI",
+      conditions: [
+        {
+          index: 0,
+          type: "lower-than",
+          options: {
+            indicator1: "RSI(14)",
+            timeframe1: "1h",
+            indicator2: "Value",
+            value: 30
+          }
+        }
+      ],
+      actions: [
+        {
+          index: 0,
+          action: "close-position",
+          options: {}
+        }
+      ]
+    },
+    {
+      name: "Notify on High Volatility",
+      conditions: [
+        {
+          index: 0,
+          type: "increased-by",
+          options: {
+            indicator1: "Price",
+            timeframe1: "15min",
+            value: 2
+          }
+        }
+      ],
+      actions: [
+        {
+          index: 0,
+          action: "notify-me",
+          options: {
+            channel: "Telegram",
+            message: "High volatility detected in ETH or BTC!"
+          }
+        }
+      ]
+    }
+  ]
+}
+}
 ]

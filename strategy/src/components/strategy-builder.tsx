@@ -1155,7 +1155,6 @@ export function StrategyBuilder({
                       leverageOptions.map(option => option.label),
                       customBlockConfigs
                     )
-                    console.log("System Prompt:", systemPrompt)
                     const result = await callAIFunction(systemPrompt, [aiPrompt], selectedAIModel)
                     setAiGeneratedJson(result)
                   } catch (error) {

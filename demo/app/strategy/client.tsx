@@ -318,7 +318,6 @@ export function StrategyPageClient({
 
   // AI function wrapper - delegates to agentService.callAI
   const handleCallAI = useCallback(async (systemPrompt: string, userPrompts: string[], model: string): Promise<string> => {
-    console.log('Calling AI with:', systemPrompt)
     return await agentService.callAI(systemPrompt, userPrompts, model)
   }, [])
 

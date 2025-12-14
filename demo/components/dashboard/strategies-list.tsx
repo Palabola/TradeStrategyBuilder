@@ -16,13 +16,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { getSavedStrategies, removeStrategyFromStorage } from "@/lib/strategy-storage"
-import { Plus, Play, Edit, Trash2 } from "lucide-react"
+import { Plus, Play, Edit, Trash2, FileText, Sparkles } from "lucide-react"
 import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
+import { predefinedStrategies } from "@/lib/predefined-strategies"
+import { useRouter } from "next/navigation"
 
 export function StrategiesList() {
   const [strategies, setStrategies] = useState<StrategyTemplate[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [strategyToDelete, setStrategyToDelete] = useState<StrategyTemplate | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     setStrategies(getSavedStrategies())
@@ -42,6 +45,24 @@ export function StrategiesList() {
     setStrategyToDelete(null)
   }
 
+  const handleSelectPredefinedStrategy = (strategy: StrategyTemplate) => {
+    try {
+      localStorage.setItem('strategy-draft', JSON.stringify(strategy))
+      router.push('/strategy')
+    } catch (error) {
+      console.warn('Failed to save strategy draft to localStorage:', error)
+    }
+  }
+
+  const handleBlankStrategyClick = () => {
+    try {
+      localStorage.removeItem('strategy-draft')
+      router.push('/strategy')
+    } catch (error) {
+      console.warn('Failed to clear strategy draft from localStorage:', error)
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -55,9 +76,39 @@ export function StrategiesList() {
       </CardHeader>
       <CardContent>
         {strategies.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No strategies yet.</p>
-            <p className="text-sm">Create your first trading strategy to get started.</p>
+          <div className="py-12">
+            <div className="xl:max-w-[1200px] mx-auto">
+              <h3 className="text-lg font-semibold mb-2">Choose your first strategy</h3>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {/* Blank Strategy Card */}
+                <div
+                  onClick={handleBlankStrategyClick}
+                  className="p-6 rounded-lg border border-border hover:border-primary hover:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <FileText className="min-w-5 h-5 w-5 text-primary" />
+                    <h4 className="font-medium">Blank</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Start from scratch and build your own custom trading strategy.</p>
+                </div>
+
+                {/* Predefined Strategy Cards */}
+                {predefinedStrategies.map((template) => (
+                  <div
+                    key={template.id}
+                    onClick={() => handleSelectPredefinedStrategy(template.strategy)}
+                    className="p-6 rounded-lg border border-border hover:border-primary hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Sparkles className="min-w-5 h-5 w-5 text-primary" />
+                      <h4 className="font-medium">{template.name}</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{template.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
