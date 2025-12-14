@@ -18,14 +18,6 @@ import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { strategyRunner, type StrategyEvaluation } from "@/lib/strategy-runner"
 import { ResultsPanel } from "@/components/results-panel"
 
-const iterationCycleOptions = [
-  { label: "10 cycles", value: 10 },
-  { label: "25 cycles", value: 25 },
-  { label: "50 cycles", value: 50 },
-  { label: "100 cycles", value: 100 },
-  { label: "200 cycles", value: 200 },
-]
-
 interface AnalysisResult {
   totalExecutions: number
   ruleExecutions: { ruleName: string; triggeredCount: number }[]
@@ -56,7 +48,6 @@ export function AnalysisPanel({
   const [selectedSymbol, setSelectedSymbol] = useState<string>(
     selectedStrategy?.symbols?.[0] || ""
   )
-  const [selectedCycles, setSelectedCycles] = useState<number>(50)
   const [initialUSD, setInitialUSD] = useState<string>("10000")
   const [initialCoin, setInitialCoin] = useState<string>("0")
   
@@ -75,6 +66,9 @@ export function AnalysisPanel({
     ? selectedSymbol 
     : selectedStrategy?.symbols?.[0] || ""
 
+  // Calculate iteration count from strategy template (max 250)
+  const iterationCount = Math.min(selectedStrategy?.executionOptions?.maximumExecuteCount || 50, 250)
+
   // Analytics handler
   const handleAnalyze = async () => {
     if (!selectedStrategy || !currentSymbol) return
@@ -92,7 +86,7 @@ export function AnalysisPanel({
     try {
       const response = await strategyRunner.analyzeStrategy(
         selectedStrategy, 
-        selectedCycles, 
+        iterationCount, 
         currentSymbol,
         balances
       )
@@ -193,26 +187,6 @@ export function AnalysisPanel({
                       {selectedStrategy.symbols.map((pair) => (
                         <SelectItem key={pair} value={pair}>
                           {pair}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Iteration Cycles Selector */}
-                <div className="space-y-2">
-                  <Label htmlFor="cycles-select" className="text-sm font-medium">Iteration Cycles</Label>
-                  <Select 
-                    value={selectedCycles.toString()} 
-                    onValueChange={(val) => setSelectedCycles(Number(val))}
-                  >
-                    <SelectTrigger id="cycles-select" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {iterationCycleOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value.toString()}>
-                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -17,9 +17,11 @@ function StrategyContent() {
   const channelOptionsOverride = ["Telemgram", "Email", "Notification"];
   const themeOverride = null;
 
+  const strategyDraft = typeof window !== 'undefined' ? localStorage.getItem('strategy-draft') : null;
+
   return (
     <StrategyPageClient
-      initialStrategy={strategyId ? getStrategyById(strategyId) : undefined}
+      initialStrategy={strategyId ? getStrategyById(strategyId) : (strategyDraft ? JSON.parse(strategyDraft) : undefined)}
       candleOptions={candleOptionsOverride}
       indicatorOptions={indicatorOptionsOverride}
       unitOptions={unitOptionsOverride}

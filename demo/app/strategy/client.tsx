@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getStrategyById, saveStrategyToStorage } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { agentService, supportedModels } from "../../lib/agent-service"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
-import { StrategyBuilder, CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig} from "@palabola86/trade-strategy-builder"
+import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig, StrategyBuilder} from "@palabola86/trade-strategy-builder"
 import { AnalysisPanel } from "@/components/analysis-panel"
 
 type ThemeOption = "none" | "grayscale" | "colored"
@@ -138,12 +138,11 @@ export function StrategyPageClient({
 
   // Strategy deploy state
   const [showDeployDialog, setShowDeployDialog] = useState(false)
-  const [lastSavedStrategyId, setLastSavedStrategyId] = useState<string | null>(null)
 
   // Current strategy state for onStrategyChange callback
   const [currentStrategy, setCurrentStrategy] = useState<StrategyTemplate | null>(null)
 
-  const customBlockConfigs: Record<BlockType, BlockConfig> = {
+  const customBlockConfigs: Record<BlockType, BlockConfig> = useMemo(() => ({
     // Example custom block configuration
     'buy-limit': {
       label: 'Buy Limit',
@@ -295,23 +294,32 @@ export function StrategyPageClient({
       category: "condition",
       parameters: [],
     },
-  }
+  }), [unitOptions])
 
   const handleSave = useCallback((strategy: StrategyTemplate) => {
     const savedStrategy = saveStrategyToStorage(strategy)
-    setLastSavedStrategyId(savedStrategy.strategyId || null)
     setShowDeployDialog(true)
   }, [])
 
   // Handle strategy changes from the builder
   const handleStrategyChange = useCallback((strategy: StrategyTemplate | null) => {
     setCurrentStrategy(strategy)
-    // You can add additional logic here, like logging or validation
+    // Save strategy to localStorage as draft
+    if (strategy) {
+      try {
+        localStorage.setItem('strategy-draft', JSON.stringify(strategy))
+      } catch (error) {
+        console.warn('Failed to save strategy draft to localStorage:', error)
+      }
+    }  else {
+      localStorage.removeItem('strategy-draft')
+    }
     console.log('Strategy updated:', strategy)
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI
   const handleCallAI = useCallback(async (systemPrompt: string, userPrompts: string[], model: string): Promise<string> => {
+    console.log('Calling AI with:', systemPrompt)
     return await agentService.callAI(systemPrompt, userPrompts, model)
   }, [])
 
@@ -365,6 +373,32 @@ export function StrategyPageClient({
     setIndicatorOptions(supportedIndicators)
   }
 
+  // Memoize config options to prevent unnecessary re-renders
+  const configOptions = useMemo(() => ({
+    ...blockConfigs,
+    ...customBlockConfigs
+  }), [customBlockConfigs])
+
+  // Effective initial strategy - either from props or localStorage draft
+  const [effectiveInitialStrategy, setEffectiveInitialStrategy] = useState<StrategyTemplate | undefined>(initialStrategy)
+
+  // Load draft strategy from localStorage if no initialStrategy provided
+  useEffect(() => {
+    if (!initialStrategy) {
+      try {
+        const draft = localStorage.getItem('strategy-draft')
+        if (draft) {
+          const parsedDraft = JSON.parse(draft) as StrategyTemplate
+          setEffectiveInitialStrategy(parsedDraft)
+        }
+      } catch (error) {
+        console.warn('Failed to load strategy draft from localStorage:', error)
+      }
+    } else {
+      setEffectiveInitialStrategy(initialStrategy)
+    }
+  }, [initialStrategy])
+
   return (
     <div className="relative">
       {/* Strategy Deployed Dialog */}
@@ -378,27 +412,12 @@ export function StrategyPageClient({
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Your strategy has been saved successfully. Would you like to analyze its performance on historical data?
+              Your strategy has been saved successfully.
             </p>
           </div>
-          <div className="flex justify-end gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowDeployDialog(false)}
-            >
-              Not Now
-            </Button>
-            <Button 
-              onClick={() => {
-                setShowDeployDialog(false)
-                if (lastSavedStrategyId) {
-                  router.push(`/analyze?strategy=${lastSavedStrategyId}`)
-                }
-              }}
-              disabled={!lastSavedStrategyId}
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analyze
+          <div className="flex justify-end">
+            <Button onClick={() => setShowDeployDialog(false)}>
+              OK
             </Button>
           </div>
         </DialogContent>
@@ -528,12 +547,9 @@ export function StrategyPageClient({
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 w-full">
         <div className="2xl:col-span-1">
           <StrategyBuilder
-            configOptions={{
-              ...blockConfigs,
-              ...customBlockConfigs
-            }}
+            configOptions={configOptions}
             key={builderKey}
-            initialStrategy={initialStrategy}
+            initialStrategy={effectiveInitialStrategy}
             candleOptions={candleOptions}
             indicatorOptions={indicatorOptions}
             unitOptions={unitOptions}
