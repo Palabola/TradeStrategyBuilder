@@ -43,11 +43,10 @@ export const runIntervalOptions = [
   { label: "15 minutes", value: 15 },
   { label: "30 minutes", value: 30 },
   { label: "1 hour", value: 60 },
-  { label: "6 hours", value: 360 },
+  { label: "4 hours", value: 240 },
   { label: "12 hours", value: 720 },
   { label: "1 day", value: 1440 },
   { label: "1 week", value: 10080 },
-  { label: "1 month", value: 43200 },
 ]
 
 export const blockConfigs: Record<BlockType, BlockConfig> = {
@@ -611,7 +610,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
       return result
     },
     description: "Place a market buy order",
-    promptDescription: "Places a buy order with specified order type, distance, and amount. Order types include Stop Loss, Take Profit, and Trailing Stop.",
+    promptDescription: "Places a buy order with specified order type, distance, and amount. Order types include Stop Loss, Take Profit, and Trailing Stop. Optionally can define stopLoss and takeProfit percentages.",
     icon: ShoppingCart,
     color: "text-green-500",
     bgColor: "bg-green-500/10 border-green-500/30",
@@ -695,7 +694,7 @@ export const blockConfigs: Record<BlockType, BlockConfig> = {
       return result
     },
     description: "Place a market sell order",
-    promptDescription: "Places a sell order with specified order type, distance, and amount. Order types include Stop Loss, Take Profit, and Trailing Stop.",
+    promptDescription: "Places a sell order with specified order type, distance, and amount. Order types include Stop Loss, Take Profit, and Trailing Stop. Optionally can define stopLoss and takeProfit percentages.",
     icon: Banknote,
     color: "text-red-500",
     bgColor: "bg-red-500/10 border-red-500/30",
@@ -813,11 +812,30 @@ export const STATIC_SYSTEM_PROMPT_V1 = (
   // Generate dynamic lists from configBlocks
   const conditionBlocks = Object.entries(configBlocks)
     .filter(([_, config]) => config.category === "condition")
-    .map(([_, config], index) => `${index + 1}. ${config.label}: ${config.promptDescription}`)
+    .map(([_, config], index) => `${index + 1}. ${config.label}: ${config.description}`)
 
   const actionBlocks = Object.entries(configBlocks)
     .filter(([_, config]) => config.category === "action")
-    .map(([_, config], index) => `${index + 1}. ${config.label}: ${config.promptDescription}`)
+    .map(([_, config], index) => `${index + 1}. ${config.label}: ${config.description}`)
+
+  // Generate dynamic lists from configBlocks
+  const conditionBlocksRules = Object.entries(configBlocks)
+    .filter(([_, config]) => config.category === "condition")
+    .map(([key, config], index) => `${index + 1}. ${key}: ${config.promptDescription}`)
+
+  const actionBlocksRules = Object.entries(configBlocks)
+    .filter(([_, config]) => config.category === "action")
+    .map(([key, config], index) => `${index + 1}. ${key}: ${config.promptDescription}`)
+
+   // Generate dynamic lists from configBlocks
+  const conditions = Object.entries(configBlocks)
+    .filter(([_, config]) => config.category === "condition")
+    .map(([key, _]) => `${key}`)
+
+  const actions = Object.entries(configBlocks)
+    .filter(([_, config]) => config.category === "action")
+    .map(([key, _]) => `${key}`)
+
 
   return `
   #### Persona and role:
@@ -862,16 +880,19 @@ ${actionBlocks.map(rule => `      ${rule}`).join('\n')}
        name: string
        conditions: {
          index: number
-         type: "increased-by" | "decreased-by" | "greater-than" | "lower-than" | "crossing-above" | "crossing-below"
-         indicator1?: string
-         timeframe1?: string
-         indicator2?: string
-         timeframe2?: string
-         value?: number
+         type: ${conditions.map(c => `"${c}"`).join(" | ")}
+         options: {
+          indicator1?: string
+          timeframe1?: string
+          indicator2?: string
+          timeframe2?: string
+          value?: number
+          [key: string]: any
+         }
        }[]
        actions: {
          index: number
-         action: "open" | "close" | "buy" | "sell" | "notify-me"
+         action: ${actions.map(a => `"${a}"`).join(" | ")}
          options: {
            side?: "LONG" | "SHORT"
            amount?: number
@@ -881,6 +902,7 @@ ${actionBlocks.map(rule => `      ${rule}`).join('\n')}
            takeProfit?: number
            channel?: string
            message?: string
+           [key: string]: any
          }
        }[]
      }[]
@@ -892,21 +914,12 @@ ${actionBlocks.map(rule => `      ${rule}`).join('\n')}
       - maximumOpenPositions: The maximum number of open positions allowed for the strategy, only usable if 'OPEN' action is defined.
 
     - Rules for each condition:
-    1 "increased-by": indicator1 has increased by value% over timeframe1
-    2 "decreased-by": indicator1 has decreased by value% over timeframe1
-    3 "greater-than": indicator1 in timeframe1 is greater than indicator2 in timeframe2, or greater than 'value' if indicator2 is "Value"
-    4 "lower-than": indicator1 in timeframe1 is lower than indicator2 in timeframe2, or lower than 'value' if indicator2 is "Value"
-    5 "crossing-above": indicator1 in timeframe1 has crossed above indicator2 in timeframe2, or crossed above 'value' if indicator2 is "Value"
-    6 "crossing-below": indicator1 in timeframe1 has crossed below indicator2 in timeframe2, or crossed below 'value' if indicator2 is "Value"
+${conditionBlocksRules.map(rule => `      ${rule}`).join('\n')}
     - Never use any other condition types!
     - Never use the fields not listed for each condition type!
 
     - Rules for each action:
-        1 "open": Opens a new 'side' position for 'amount' of the currency in 'unit' using 'leverage'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
-        2 "close": Closes All positions. No additional fields required.
-        3 "buy": Buy 'amount' of the currency in 'unit'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
-        4 "sell": Sell 'amount' of the currency in 'unit'. Optionally setting 'stopLoss' and 'takeProfit' as percentages.
-        5 "notify-me": Sends a notification to 'channel' with content 'message'.
+${actionBlocksRules.map(rule => `      ${rule}`).join('\n')}
     - 'symbols' is an array of 'Tradeable Symbols' should never be empty!
     - Never use any other action types!
     - Never use the fields not listed for each action type!
@@ -931,15 +944,17 @@ ${actionBlocks.map(rule => `      ${rule}`).join('\n')}
             {
               index: 0,
               type: "decreased-by",
-              indicator1: "Price",
-              timeframe1: "24h",
-              value: 1,
+              options: {
+                indicator1: "Price",
+                timeframe1: "24h",
+                value: 1,
+              },
             },
           ],
           actions: [
             {
               index: 0,
-              action: "BUY",
+              action: "buy",
               options: {
                 amount: 25,
                 unit: "USD",
@@ -967,56 +982,60 @@ ${actionBlocks.map(rule => `      ${rule}`).join('\n')}
     },
     "rules": [
         {
-        "name": "Buy on low RSI",
-        "conditions": [
+          name: "Buy on low RSI",
+          conditions: [
             {
-            "index": 0,
-            "type": "crossing-below",
-            "indicator1": "RSI(14)",
-            "timeframe1": "4h",
-            "indicator2": "RSI(7)",
-            "timeframe2": "15min"
+              index: 0,
+              type: "crossing-below",
+              options: {
+                indicator1: "RSI(14)",
+                timeframe1: "4h",
+                indicator2: "RSI(7)",
+                timeframe2: "15min"
+              }
             },
             {
-            "index": 1,
-            "type": "greater-than",
-            "indicator1": "RSI(14)",
-            "timeframe1": "4h",
-            "indicator2": "Value",
-            "value": "30"
+              index: 1,
+              type: "greater-than",
+              options: {
+                indicator1: "RSI(14)",
+                timeframe1: "4h",
+                indicator2: "Value",
+                value: "30"
+              }
             }
         ],
-        "actions": [
+        actions: [
             {
-            "index": 0,
-            "action": "BUY",
-            "options": {
-                "amount": 20,
-                "unit": "USD"
-            }
+            index: 0,
+              action: "buy",
+              options: {
+                amount: 20,
+                unit: "USD"
+              }
             }
         ]
         },
         {
-        "name": "Sell on High RSI",
-        "conditions": [
+        name: "Sell on High RSI",
+          conditions: [
             {
-            "index": 0,
-            "type": "greater-than",
-            "indicator1": "RSI(14)",
-            "timeframe1": "4h",
-            "indicator2": "RSI(14)",
-            "timeframe2": "15min"
+              index: 0,
+              type: "greater-than",
+              indicator1: "RSI(14)",
+              timeframe1: "4h",
+              indicator2: "RSI(14)",
+              timeframe2: "15min"
             }
         ],
-        "actions": [
+        actions: [
             {
-            "index": 0,
-            "action": "SELL",
-            "options": {
-                "amount": 100,
-                "unit": "%"
-            }
+            index: 0,
+              action: "sell",
+              options: {
+                amount: 100,
+                unit: "%"
+              }
             }
         ]
         }

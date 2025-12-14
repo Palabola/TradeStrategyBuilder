@@ -276,7 +276,10 @@ export function StrategyBuilder({
   useEffect(() => {
     if (onStrategyChange) {
       const result = generateStrategyJson()
-      onStrategyChange(result.success ? result.data! : null)
+      if (result.success) {
+        onStrategyChange(result.data!)
+      }
+      
     }
   }, [
     onStrategyChange,
@@ -454,6 +457,10 @@ export function StrategyBuilder({
     ])
     setStrategyName("New Strategy")
     setSelectedPairs(["BTC/USD"])
+
+    if(onStrategyChange) {
+      onStrategyChange(null)
+    }
   }
 
   const handleDeploy = () => {
