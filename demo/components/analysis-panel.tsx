@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,6 +17,13 @@ import {
 import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { strategyRunner, type StrategyEvaluation } from "@/lib/strategy-runner"
 import { ResultsPanel } from "@/components/results-panel"
+import { OHLCChart, type TradeMarker } from "@/components/ohlc-chart"
+import { candleService, type Candle } from "@/lib/candle-service"
+import { ClosedOrder } from "@/lib/exchange-service"
+
+// Available timeframes
+const TIMEFRAMES = ["1min", "5min", "15min", "30min", "1h", "4h", "24h", "1w"] as const
+type Timeframe = typeof TIMEFRAMES[number]
 
 interface AnalysisResult {
   totalExecutions: number
@@ -48,8 +55,14 @@ export function AnalysisPanel({
   const [selectedSymbol, setSelectedSymbol] = useState<string>(
     selectedStrategy?.symbols?.[0] || ""
   )
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("1h")
   const [initialUSD, setInitialUSD] = useState<string>("10000")
   const [initialCoin, setInitialCoin] = useState<string>("0")
+  
+  // Chart state
+  const [candles, setCandles] = useState<Candle[]>([])
+  const [isLoadingCandles, setIsLoadingCandles] = useState(false)
+  const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[]>([])
   
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -61,6 +74,7 @@ export function AnalysisPanel({
   // Collapsible state for configuration card
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false)
 
+
   // Update selected symbol when strategy changes
   const currentSymbol = selectedStrategy?.symbols?.includes(selectedSymbol) 
     ? selectedSymbol 
@@ -69,6 +83,32 @@ export function AnalysisPanel({
   // Calculate iteration count from strategy template (max 250)
   const iterationCount = Math.min(selectedStrategy?.executionOptions?.maximumExecuteCount || 50, 250)
 
+  // Fetch candles when symbol or timeframe changes
+  const fetchCandleData = useCallback(async () => {
+    if (!currentSymbol || !selectedTimeframe) {
+      setCandles([])
+      return
+    }
+
+    setIsLoadingCandles(true)
+    try {
+      // Convert symbol format from "BTC/USD" to "BTCUSD"
+      const krakenSymbol = currentSymbol.replace("/", "")
+      const candleData = await candleService.fetchCandles(krakenSymbol, selectedTimeframe)
+      // Take last 200 candles
+      setCandles(candleData.slice(-200))
+    } catch (error) {
+      console.error("Failed to fetch candles:", error)
+      setCandles([])
+    } finally {
+      setIsLoadingCandles(false)
+    }
+  }, [currentSymbol, selectedTimeframe])
+
+  useEffect(() => {
+    fetchCandleData()
+  }, [fetchCandleData])
+
   // Analytics handler
   const handleAnalyze = async () => {
     if (!selectedStrategy || !currentSymbol) return
@@ -76,6 +116,7 @@ export function AnalysisPanel({
     setIsAnalyzing(true)
     setAnalysisResult(null)
     setExpandedResults(new Set())
+    setTradeMarkers([]) // Clear previous trade markers
     
     const coinSymbol = currentSymbol.split("/")[0]
     const balances = [
@@ -105,6 +146,9 @@ export function AnalysisPanel({
       // Also collect triggered events with timestamps
       const triggeredEvents: { ruleName: string; timestamp: Date }[] = []
       
+      // Collect trade markers from triggered orders
+      const markers: TradeMarker[] = []
+      
       for (const evaluation of response) {
         for (const triggeredRule of evaluation.triggeredRules) {
           ruleTriggeredCounts[triggeredRule.ruleName] = (ruleTriggeredCounts[triggeredRule.ruleName] || 0) + 1
@@ -113,7 +157,23 @@ export function AnalysisPanel({
             timestamp: evaluation.evaluatedAt,
           })
         }
+        
+        // Extract trade markers from triggered orders (completed SL/TP orders)
+        if (evaluation.triggeredOrders) {
+          for (const order of evaluation.triggeredOrders) {
+            markers.push({
+              timestamp: new Date(evaluation.evaluatedAt).getTime(),
+              price: order.closePrice || order.price,
+              type: order.type,
+              orderType: order.orderType,
+              volume: order.volume,
+            })
+          }
+        }
       }
+      
+      // Update trade markers state
+      setTradeMarkers(markers)
       
       // Convert to array format
       const ruleExecutions = Object.entries(ruleTriggeredCounts).map(([ruleName, triggeredCount]) => ({
@@ -173,25 +233,54 @@ export function AnalysisPanel({
           <CollapsibleContent className="space-y-4">
             {selectedStrategy && (
               <>
-                {/* Symbol Selector */}
-                <div className="space-y-2">
-                  <Label htmlFor="symbol-select" className="text-sm font-medium">Trading Pair</Label>
-                  <Select 
-                    value={currentSymbol} 
-                    onValueChange={setSelectedSymbol}
-                  >
-                    <SelectTrigger id="symbol-select" className="w-full">
-                      <SelectValue placeholder="Select a pair" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedStrategy.symbols.map((pair) => (
-                        <SelectItem key={pair} value={pair}>
-                          {pair}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Symbol and Timeframe Selectors */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="symbol-select" className="text-sm font-medium">Trading Pair</Label>
+                    <Select 
+                      value={currentSymbol} 
+                      onValueChange={setSelectedSymbol}
+                    >
+                      <SelectTrigger id="symbol-select" className="w-full">
+                        <SelectValue placeholder="Select a pair" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedStrategy.symbols.map((pair) => (
+                          <SelectItem key={pair} value={pair}>
+                            {pair}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="timeframe-select" className="text-sm font-medium">Timeframe</Label>
+                    <Select 
+                      value={selectedTimeframe} 
+                      onValueChange={(value) => setSelectedTimeframe(value as Timeframe)}
+                    >
+                      <SelectTrigger id="timeframe-select" className="w-full">
+                        <SelectValue placeholder="Select timeframe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEFRAMES.map((tf) => (
+                          <SelectItem key={tf} value={tf}>
+                            {tf}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                {/* OHLC Chart */}
+                {currentSymbol && selectedTimeframe && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Price Chart</Label>
+                    <OHLCChart data={candles} isLoading={isLoadingCandles} tradeMarkers={tradeMarkers} />
+                  </div>
+                )}
 
                 {/* Initial Portfolio */}
                 <div className="space-y-2">

@@ -769,7 +769,7 @@ export function StrategyBuilder({
           </Button>
         </div>
         <Card>
-          <CardHeader className="pb-3">
+          <CardContent>
             <div className="flex items-center gap-2">
               <CardTitle className="text-lg">Strategy Details</CardTitle>
               <Button
@@ -797,10 +797,10 @@ export function StrategyBuilder({
               <span className="font-medium text-foreground">{maximumOpenPositions} open position{maximumOpenPositions !== 1 ? "s" : ""}</span>
               {"."}
             </p>
-          </CardHeader>
+          </CardContent>
         </Card>
-        <div className="grid gap-6 lg:grid-cols-[300px_1fr] max-w-screen-2xl">
-          <div className="space-y-6 hidden lg:block">
+        <div className="grid gap-4 lg:grid-cols-[280px_1fr] max-w-screen-2xl">
+          <div className="space-y-4 hidden lg:block">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Building Blocks</CardTitle>
