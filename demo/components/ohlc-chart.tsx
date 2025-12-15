@@ -106,7 +106,7 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
           <p className="text-xs text-muted-foreground mb-2">
             {format(new Date(data.time), "MMM dd, yyyy HH:mm")}
           </p>
-          <div className="space-y-1 text-sm">
+          <div className="space-y-1 text-xs">
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Open:</span>
               <span className="font-medium">${data.open.toLocaleString()}</span>
@@ -123,10 +123,24 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
               <span className="text-muted-foreground">Close:</span>
               <span className="font-medium">${data.close.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between gap-4 pt-1 border-t border-border">
-              <span className="text-muted-foreground">Volume:</span>
-              <span className="font-medium">{data.volume.toFixed(2)}</span>
-            </div>
+            {data.tradeMarker && 
+              <div className="pt-1 border-t border-border space-y-1">
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Trade:</span>
+                  <span className={`font-medium ${data.tradeMarker.type === 'buy' ? 'text-success' : 'text-destructive'}`}>
+                    {data.tradeMarker.type.toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Volume:</span>
+                  <span className="font-sm">{data.tradeMarker.volume.toFixed(6)}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span className="font-medium">{data.tradeMarker.orderType}</span>
+                </div>
+              </div>
+            }
           </div>
         </div>
       )
@@ -140,8 +154,6 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
   const minPrice = Math.min(...allLows) * 0.995
   const maxPrice = Math.max(...allHighs) * 1.005
   const yDomain: [number, number] = [minPrice, maxPrice]
-
-  console.log("Y Domain:", yDomain)
 
   // Custom candlestick shape component with trade markers
   const Candlestick = (props: any) => {
