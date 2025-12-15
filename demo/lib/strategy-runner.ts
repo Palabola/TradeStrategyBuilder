@@ -1,6 +1,6 @@
 import { ActionType, IndicatorOption, StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { candleService, type Candle } from "./candle-service"
-import { AddOrderParams, exchangeService, OrderSide, OrderType } from "./exchange-service"
+import { AddOrderParams, ClosedOrder, exchangeService, OpenOrder, OrderSide, OrderType, OrderUpdateResult } from "./exchange-service"
 import { indicatorsService } from "./indicators-service"
 
 // Supported indicators
@@ -64,6 +64,11 @@ export interface StrategyEvaluation {
   evaluatedAt: Date
   rules: RuleEvaluation[]
   triggeredRules: RuleEvaluation[]
+  triggeredOrders: ClosedOrder[]
+  activatedPendingOrders: OpenOrder[]
+  closedOrders?: ClosedOrder[]
+  openedOrders: OpenOrder[]
+  openedPendingOrders: OpenOrder[]
 }
 
 export class StrategyRunner {
@@ -490,6 +495,11 @@ export class StrategyRunner {
       evaluatedAt: until ? new Date(until) : new Date(),
       rules: ruleEvaluations,
       triggeredRules,
+      triggeredOrders: [],
+      activatedPendingOrders: [],
+      closedOrders: [],
+      openedOrders: [],
+      openedPendingOrders: [],
     }
   }
 
@@ -553,6 +563,8 @@ export class StrategyRunner {
     for (let i = 0; i < executionLimit; i++) {
       const until = startTime + (i * intervalMs)
       const result = await this.evaluateStrategy(strategy, symbol, until);
+      result.openedOrders = [];
+      result.openedPendingOrders = [];
 
       // if intervalBetweenExecutionsMinutes is set, skip evaluations for rules that were recently triggered
       if (strategy.executionOptions?.intervalBetweenExecutionsMinutes) {
@@ -580,9 +592,9 @@ export class StrategyRunner {
           if (openOrderCount < (strategy.executionOptions?.maximumOpenPositions || Infinity)) {
 
             let orderType: OrderType;
-            let side: OrderSide;
+            let side: OrderSide | undefined;
             let triggerDistance: number | undefined = undefined;
-            let triggerPrice: number | undefined = undefined;
+            let triggerPrice: number | undefined = priceUSD;
 
             switch (action.action) {
               case "buy":
@@ -617,7 +629,10 @@ export class StrategyRunner {
               default:
                 if(action.action === "buy-limit" || action.action === "sell-limit") {
                   orderType = "limit";
-                  triggerPrice = -(action.options?.unitLimit === '%' ? action.options?.unitLimit * 0.01 * priceUSD! : action.options?.limitPrice);
+                  triggerPrice = action.options?.limitPrice;
+                  if(action.options?.unitLimit === '%') {
+                    triggerPrice = priceUSD + (action.action === "buy-limit"? 1 : -1) * (action.options?.unitLimit * 0.01 * priceUSD!);
+                  }
                 } else {
                   orderType = "market";
                 }
@@ -641,12 +656,12 @@ export class StrategyRunner {
 
             if(triggerDistance) {
               triggerPrice = side === "buy"
-                ? priceUSD + triggerDistance
-                : priceUSD - triggerDistance
+                ? priceUSD - triggerDistance
+                : priceUSD + triggerDistance
             }
 
-            let volume = action.options?.volume ? parseFloat(action.options.volume) / priceUSD : 0;
-            if (action.options?.volumeType === '%' && priceUSD) {
+            let volume = action.options?.amount ? action.options.amount / priceUSD : 0;
+            if (action.options?.unit === '%' && priceUSD) {
               const accountBalance = exchangeService.getAccountBalance('USD');
               const positionValue = (volume / 100) * accountBalance;
               volume = positionValue / priceUSD;
@@ -663,18 +678,31 @@ export class StrategyRunner {
               priceTP: priceTP,
               trailingDistance: action.options?.trailingStop,
             }
-            exchangeService.addOrder(orderParams);
+            const orderResult = exchangeService.addOrder(orderParams, priceUSD);
+
+            if(orderType !== "market") {
+              result.openedOrders.push(orderResult.openOrder);
+            }
+             // Also add any pending orders (SL/TP) that were created
+            result.openedPendingOrders.push(...orderResult.pendingOrders);
           }
 
+          if(action.action === "close-position") {
+            result.closedOrders = exchangeService.closeAllOrders(symbol);
+          }
         });
 
         lastRuleTriggerTimes.set(ruleEval.ruleIndex, until)
       });
 
-      results.push(result);
-
       // simulate market movements in the order service
-      exchangeService.updateOrders(until, priceUSD!, symbol);
+      const orderResult: OrderUpdateResult = exchangeService.updateOrders(until, priceUSD!, symbol);
+
+      result.activatedPendingOrders = orderResult.activatedPendingOrders;
+      result.triggeredOrders = orderResult.triggeredOrders.filter(o => o.status === "completed");
+      result.closedOrders = result.closedOrders?.concat(orderResult.triggeredOrders.filter(o => o.status === "canceled"));
+
+      results.push(result);
 
     }
 

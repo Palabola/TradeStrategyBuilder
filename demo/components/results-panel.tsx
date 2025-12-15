@@ -15,9 +15,14 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   DollarSign,
-  LogOut
+  LogOut,
+  Target,
+  ShieldCheck,
+  TrendingUp,
+  AlertCircle
 } from "lucide-react"
 import { StrategyEvaluation } from "@/lib/strategy-runner"
+import { ClosedOrder, OpenOrder } from "@/lib/exchange-service"
 
 interface AnalysisResult {
   totalExecutions: number
@@ -261,94 +266,81 @@ interface TradesSummaryProps {
   analysisResult: AnalysisResult
 }
 
-interface TradeAction {
-  timestamp: Date
-  ruleName: string
-  actionType: "buy" | "sell" | "open-position" | "close-position"
-  side?: string
-  amount?: number
-  unit?: string
-  leverage?: string
-  priceUSD?: number | null
-}
-
 function TradesSummary({ analysisResult }: TradesSummaryProps) {
-  // Extract all trade actions from the analysis results
-  const trades = useMemo(() => {
-    const tradeActions: TradeAction[] = []
+  // Aggregate all orders from the analysis results
+  const orderData = useMemo(() => {
+    const allTriggeredOrders: (ClosedOrder & { timestamp: Date })[] = []
+    const allClosedOrders: (ClosedOrder & { timestamp: Date })[] = []
+    const allOpenedOrders: (OpenOrder & { timestamp: Date })[] = []
+    const allActivatedPendingOrders: (OpenOrder & { timestamp: Date })[] = []
 
     for (const evaluation of analysisResult.fullResults) {
-      for (const triggeredRule of evaluation.triggeredRules) {
-        for (const action of triggeredRule.actions) {
-          const actionType = action.action
-          if (actionType === "buy" || actionType === "sell" || actionType === "open-position" || actionType === "close-position") {
-            tradeActions.push({
-              timestamp: evaluation.evaluatedAt,
-              ruleName: triggeredRule.ruleName,
-              actionType: actionType as "buy" | "sell" | "open-position" | "close-position",
-              side: action.options?.side,
-              amount: action.options?.amount,
-              unit: action.options?.unit,
-              leverage: action.options?.leverage,
-              priceUSD: evaluation.priceUSD,
-            })
-          }
+      const timestamp = evaluation.evaluatedAt
+
+      // Triggered Orders (SL/TP orders that executed)
+      if (evaluation.triggeredOrders) {
+        for (const order of evaluation.triggeredOrders) {
+          allTriggeredOrders.push({ ...order, timestamp })
+        }
+      }
+
+      // Closed/Cancelled Orders
+      if (evaluation.closedOrders) {
+        for (const order of evaluation.closedOrders) {
+          allClosedOrders.push({ ...order, timestamp })
+        }
+      }
+
+      // Opened Orders (new conditional orders created)
+      if (evaluation.openedOrders) {
+        for (const order of evaluation.openedOrders) {
+          allOpenedOrders.push({ ...order, timestamp })
+        }
+      }
+
+      // Activated Pending Orders (SL/TP pending orders activated)
+      if (evaluation.activatedPendingOrders) {
+        for (const order of evaluation.activatedPendingOrders) {
+          allActivatedPendingOrders.push({ ...order, timestamp })
         }
       }
     }
 
-    return tradeActions.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    return {
+      triggeredOrders: allTriggeredOrders.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+      closedOrders: allClosedOrders.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+      openedOrders: allOpenedOrders.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+      activatedPendingOrders: allActivatedPendingOrders.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
+    }
   }, [analysisResult])
 
   // Calculate summary statistics
   const summary = useMemo(() => {
     const stats = {
-      totalTrades: trades.length,
-      buyCount: 0,
-      sellCount: 0,
-      openLongCount: 0,
-      openShortCount: 0,
-      closeCount: 0,
-      totalBuyAmount: 0,
-      totalSellAmount: 0,
+      totalTriggeredOrders: orderData.triggeredOrders.length,
+      totalClosedOrders: orderData.closedOrders.length,
+      totalOpenedOrders: orderData.openedOrders.length,
+      totalActivatedPendingOrders: orderData.activatedPendingOrders.length,
+      buyTriggered: orderData.triggeredOrders.filter(o => o.type === "buy").length,
+      sellTriggered: orderData.triggeredOrders.filter(o => o.type === "sell").length,
+      slTriggered: orderData.triggeredOrders.filter(o => o.orderType === "stop-loss").length,
+      tpTriggered: orderData.triggeredOrders.filter(o => o.orderType === "take-profit").length,
     }
-
-    for (const trade of trades) {
-      switch (trade.actionType) {
-        case "buy":
-          stats.buyCount++
-          if (trade.amount && trade.unit === "USD") {
-            stats.totalBuyAmount += trade.amount
-          }
-          break
-        case "sell":
-          stats.sellCount++
-          if (trade.amount && trade.unit === "USD") {
-            stats.totalSellAmount += trade.amount
-          }
-          break
-        case "open-position":
-          if (trade.side === "LONG") {
-            stats.openLongCount++
-          } else if (trade.side === "SHORT") {
-            stats.openShortCount++
-          }
-          break
-        case "close-position":
-          stats.closeCount++
-          break
-      }
-    }
-
     return stats
-  }, [trades])
+  }, [orderData])
 
-  if (trades.length === 0) {
+  const hasNoOrders = 
+    orderData.triggeredOrders.length === 0 && 
+    orderData.closedOrders.length === 0 && 
+    orderData.openedOrders.length === 0 &&
+    orderData.activatedPendingOrders.length === 0
+
+  if (hasNoOrders) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <DollarSign className="h-16 w-16 text-muted-foreground/30 mb-4" />
         <p className="text-muted-foreground">
-          No trade actions were triggered during this analysis.
+          No trade orders were executed during this analysis.
         </p>
       </div>
     )
@@ -360,115 +352,185 @@ function TradesSummary({ analysisResult }: TradesSummaryProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
           <div className="flex items-center gap-2 mb-2">
-            <ArrowUpCircle className="h-5 w-5 text-green-500" />
-            <span className="text-sm font-medium">Buy Orders</span>
+            <span className="text-sm font-medium">Triggered Orders</span>
           </div>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.buyCount}</div>
-          {summary.totalBuyAmount > 0 && (
+          <div className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.totalTriggeredOrders}</div>
+          {(summary.slTriggered > 0 || summary.tpTriggered > 0) && (
             <div className="text-xs text-muted-foreground mt-1">
-              Total: ${summary.totalBuyAmount.toLocaleString()}
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-          <div className="flex items-center gap-2 mb-2">
-            <ArrowDownCircle className="h-5 w-5 text-red-500" />
-            <span className="text-sm font-medium">Sell Orders</span>
-          </div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.sellCount}</div>
-          {summary.totalSellAmount > 0 && (
-            <div className="text-xs text-muted-foreground mt-1">
-              Total: ${summary.totalSellAmount.toLocaleString()}
+              Buy {summary.buyTriggered} / Sell {summary.sellTriggered}
             </div>
           )}
         </div>
 
         <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
           <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="h-5 w-5 text-blue-500" />
-            <span className="text-sm font-medium">Open Positions</span>
+            <span className="text-sm font-medium">Opened Orders</span>
           </div>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {summary.openLongCount + summary.openShortCount}
+          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.totalOpenedOrders}</div>
+        
+        </div>
+
+        <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium">SL/TP Activated</span>
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {summary.openLongCount} Long / {summary.openShortCount} Short
-          </div>
+          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{summary.totalActivatedPendingOrders}</div>
         </div>
 
         <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
           <div className="flex items-center gap-2 mb-2">
-            <LogOut className="h-5 w-5 text-orange-500" />
-            <span className="text-sm font-medium">Close Positions</span>
+            <span className="text-sm font-medium">Closed Orders</span>
           </div>
-          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{summary.closeCount}</div>
+          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{summary.totalClosedOrders}</div>
         </div>
       </div>
 
-      {/* Trade History */}
-      <div>
-        <h4 className="text-sm font-medium mb-3">Trade History</h4>
-        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-          {trades.map((trade, index) => {
-            const isBuyOrLong = trade.actionType === "buy" || (trade.actionType === "open-position" && trade.side === "LONG")
-            const isSellOrShort = trade.actionType === "sell" || (trade.actionType === "open-position" && trade.side === "SHORT")
-            const isClose = trade.actionType === "close-position"
+      {/* Triggered Orders Section */}
+      {orderData.triggeredOrders.length > 0 && (
+        <OrderSection
+          title="Triggered Orders"
+          description="Orders that hit their trigger conditions (SL/TP executed)"
+          orders={orderData.triggeredOrders}
+          type="triggered"
+        />
+      )}
 
-            let bgColor = "bg-muted/50"
-            let borderColor = "border-transparent"
-            let icon = <DollarSign className="h-4 w-4" />
+      {/* Opened Orders Section */}
+      {orderData.openedOrders.length > 0 && (
+        <OrderSection
+          title="Opened Orders"
+          description="New conditional orders created by strategy rules"
+          orders={orderData.openedOrders}
+          type="opened"
+        />
+      )}
 
-            if (isBuyOrLong) {
-              bgColor = "bg-green-500/10"
-              borderColor = "border-green-500/30"
-              icon = <ArrowUpCircle className="h-4 w-4 text-green-500" />
-            } else if (isSellOrShort) {
-              bgColor = "bg-red-500/10"
-              borderColor = "border-red-500/30"
-              icon = <ArrowDownCircle className="h-4 w-4 text-red-500" />
-            } else if (isClose) {
-              bgColor = "bg-orange-500/10"
-              borderColor = "border-orange-500/30"
-              icon = <LogOut className="h-4 w-4 text-orange-500" />
-            }
+      {/* Activated Pending Orders Section */}
+      {orderData.activatedPendingOrders.length > 0 && (
+        <OrderSection
+          title="Activated Pending Orders"
+          description="Stop Loss / Take Profit orders that became active"
+          orders={orderData.activatedPendingOrders}
+          type="pending"
+        />
+      )}
 
-            let tradeLabel: string = trade.actionType
-            if (trade.actionType === "open-position") {
-              tradeLabel = `OPEN ${trade.side}`
-            }
-            if (trade.amount && trade.unit) {
-              tradeLabel += ` ${trade.amount} ${trade.unit}`
-            }
-            if (trade.leverage && trade.leverage !== "No" && trade.leverage !== "1") {
-              tradeLabel += ` @ ${trade.leverage}`
+      {/* Closed Orders Section */}
+      {orderData.closedOrders.length > 0 && (
+        <OrderSection
+          title="Closed Orders"
+          description="Orders that were cancelled or closed"
+          orders={orderData.closedOrders}
+          type="closed"
+        />
+      )}
+    </div>
+  )
+}
+
+// Order Section Component
+interface OrderSectionProps {
+  title: string
+  description: string
+  orders: ((ClosedOrder | OpenOrder) & { timestamp: Date })[]
+  type: "triggered" | "opened" | "pending" | "closed"
+}
+
+function OrderSection({ title, description, orders, type }: OrderSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  const getOrderTypeLabel = (order: ClosedOrder | OpenOrder) => {
+    const labels: Record<string, string> = {
+      "market": "Market",
+      "limit": "Limit",
+      "stop-loss": "Stop Loss",
+      "take-profit": "Take Profit",
+      "trailing-stop": "Trailing Stop",
+    }
+    return labels[order.orderType] || order.orderType
+  }
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center justify-between p-3 rounded-lg cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+          <div className="flex items-center gap-3">
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+            <div>
+              <h4 className="text-sm font-medium">{title}</h4>
+              <p className="text-xs text-muted-foreground">{description}</p>
+            </div>
+          </div>
+          <Badge variant="secondary">{orders.length}</Badge>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="space-y-2 mt-2 max-h-[300px] overflow-y-auto pr-2">
+          {orders.map((order, index) => {
+            const isBuy = order.type === "buy"
+            const isClosedOrder = "closePrice" in order && order.closePrice
+            const isStopLossOrTakeProfit = order.orderType === "stop-loss" || order.orderType === "take-profit"
+            
+            // Calculate profit percentage for completed SL/TP orders
+            let profitPercent: number | null = null
+            if (isClosedOrder && isStopLossOrTakeProfit && order.entryPrice && order.closePrice) {
+              profitPercent = ((order.closePrice - order.entryPrice) / order.entryPrice) * 100
             }
 
             return (
               <div
-                key={index}
-                className={`flex items-center justify-between p-3 rounded-lg border ${bgColor} ${borderColor}`}
+                key={order.id || index}
+                className={`flex items-center justify-between p-3 rounded-lg border`}
               >
                 <div className="flex items-center gap-3">
-                  {icon}
                   <div>
-                    <div className="text-sm font-medium">{tradeLabel}</div>
-                    <div className="text-xs text-muted-foreground">{trade.ruleName}</div>
+                    <div className="text-sm font-medium flex items-center gap-2">
+                      <span>
+                        {order.type.toUpperCase()}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {getOrderTypeLabel(order)}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {order.pair} • Vol: {order.volume.toFixed(6)}
+                      {order.leverage && order.leverage > 1 && ` • ${order.leverage}x`}
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  {trade.priceUSD && (
-                    <div className="text-sm font-medium">${trade.priceUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  {isClosedOrder ? (
+                    // For closed orders, show closePrice as default
+                    <div className="text-sm font-medium">
+                      ${order.closePrice!.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  ) : (
+                    // For open/pending orders, show entry price
+                    <div className="text-sm font-medium">
+                      ${order.entryPrice?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || 'N/A'}
+                    </div>
                   )}
+                  
+                  {/* Show profit percentage for completed SL/TP orders */}
+                  {profitPercent !== null && (
+                    <div className={`text-xs ${profitPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {profitPercent >= 0 ? '+' : ''}{profitPercent.toFixed(2)}%
+                    </div>
+                  )}
+                  
                   <div className="text-xs text-muted-foreground">
-                    {new Date(trade.timestamp).toLocaleString()}
+                    {new Date(order.timestamp).toLocaleString()}
                   </div>
                 </div>
               </div>
             )
           })}
         </div>
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }

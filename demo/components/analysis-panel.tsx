@@ -90,6 +90,8 @@ export function AnalysisPanel({
         currentSymbol,
         balances
       )
+
+      //console.log("Analysis response:", response)
       
       // Calculate summary: triggered count per rule
       const ruleTriggeredCounts: Record<string, number> = {}

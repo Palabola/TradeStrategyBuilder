@@ -21,6 +21,7 @@ export type OrderStatus = "completed" | "canceled"
 // Base order interface
 export interface BaseOrder {
   id: string
+  parentId?: string
   type: OrderSide
   orderType: OrderType
   pair: string
@@ -28,7 +29,7 @@ export interface BaseOrder {
   price: number
   leverage?: number
   entryPrice: number
-  triggerPrice: number | null
+  triggerPrice: number
   trailingDistance: number | null
 }
 
@@ -39,7 +40,6 @@ export interface OpenOrder extends BaseOrder {
 
 // Pending order (child of an open order)
 export interface PendingOrder extends BaseOrder {
-  parentId: string
   createdAt: number
 }
 
@@ -68,6 +68,12 @@ export interface AddOrderParams {
 export interface OrderUpdateResult {
   triggeredOrders: ClosedOrder[]
   activatedPendingOrders: OpenOrder[]
+}
+
+// Add order result
+export interface AddOrderResult {
+  openOrder: OpenOrder
+  pendingOrders: PendingOrder[]
 }
 
 // Generate unique ID
@@ -141,15 +147,15 @@ class ExchangeService {
       if (order.trailingDistance !== null && order.triggerPrice !== null) {
         if (order.type === "buy") {
           // For buy trailing stop, trigger price moves up with price
-          const newTriggerPrice = price - order.trailingDistance
-          if (newTriggerPrice > order.triggerPrice) {
+          const newTriggerPrice = price - order.trailingDistance * price / 100
+          if (newTriggerPrice < order.triggerPrice) {
             order.triggerPrice = newTriggerPrice
             this.openOrders.set(order.id, order)
           }
         } else {
           // For sell trailing stop, trigger price moves down with price
-          const newTriggerPrice = price + order.trailingDistance
-          if (newTriggerPrice < order.triggerPrice) {
+          const newTriggerPrice = price + order.trailingDistance * price / 100
+          if (newTriggerPrice > order.triggerPrice) {
             order.triggerPrice = newTriggerPrice
             this.openOrders.set(order.id, order)
           }
@@ -164,8 +170,17 @@ class ExchangeService {
         const closedOrder = this.closeOrder(order, price, timestamp, "completed")
         result.triggeredOrders.push(closedOrder)
 
+        // Also close any open orders with the same parentId. e.g. close the SL when the TP is hit
+        if (order.parentId) {
+         for (const [_, openOrder] of this.openOrders) {
+            if (openOrder.parentId === order.parentId) {
+               result.triggeredOrders.push(this.closeOrder(openOrder, price, timestamp, "canceled"))
+            }
+          }
+        }
+
         // Activate pending orders for this parent
-        const activatedOrders = this.activatePendingOrders(order.id, timestamp)
+        const activatedOrders = this.activatePendingOrders(order.id, timestamp, price)
         result.activatedPendingOrders.push(...activatedOrders)
       }
     }
@@ -177,9 +192,9 @@ class ExchangeService {
    * Check if an order's trigger condition is met
    */
   private checkTrigger(order: OpenOrder | PendingOrder, price: number): boolean {
-    if (order.triggerPrice === null) {
-      // Market orders trigger immediately
-      return order.orderType === "market"
+    // Market orders trigger immediately
+    if (order.orderType === "market") {
+      return true
     }
 
     switch (order.orderType) {
@@ -211,10 +226,6 @@ class ExchangeService {
         return order.type === "buy"
           ? price >= order.triggerPrice
           : price <= order.triggerPrice
-
-      case "market":
-        return true
-
       default:
         return false
     }
@@ -255,20 +266,21 @@ class ExchangeService {
   /**
    * Activate pending orders when parent order completes
    */
-  private activatePendingOrders(parentId: string, timestamp: number): OpenOrder[] {
+  private activatePendingOrders(parentId: string, timestamp: number, price: number): OpenOrder[] {
     const activatedOrders: OpenOrder[] = []
 
     for (const [id, pendingOrder] of this.pendingOrders) {
       if (pendingOrder.parentId === parentId) {
         const openOrder: OpenOrder = {
           id: pendingOrder.id,
+          parentId: pendingOrder.parentId,
           type: pendingOrder.type,
           orderType: pendingOrder.orderType,
           pair: pendingOrder.pair,
           volume: pendingOrder.volume,
           price: pendingOrder.price,
           leverage: pendingOrder.leverage,
-          entryPrice: pendingOrder.entryPrice,
+          entryPrice: price,
           triggerPrice: pendingOrder.triggerPrice,
           trailingDistance: pendingOrder.trailingDistance,
           createdAt: timestamp,
@@ -287,7 +299,7 @@ class ExchangeService {
    * Add a new order
    * If priceSL, priceTP, or trailingDistance is set, create pending child orders
    */
-  addOrder(params: AddOrderParams): OpenOrder {
+  addOrder(params: AddOrderParams, price: number): AddOrderResult {
     const orderId = generateId()
     const timestamp = Date.now()
 
@@ -295,10 +307,7 @@ class ExchangeService {
     const orderPrice = params.price || 0
 
     // Calculate trigger price based on order type
-    let triggerPrice: number | null = null
-    if (params.orderType !== "market") {
-      triggerPrice = orderPrice
-    }
+    let triggerPrice: number | null = orderPrice
 
     // Calculate trailing distance trigger price
     let trailingDistance: number | null = null
@@ -307,8 +316,8 @@ class ExchangeService {
       // Set initial trigger price for trailing stop
       if (params.orderType === "trailing-stop" || params.orderType === "trailing-stop-limit") {
         triggerPrice = params.type === "buy"
-          ? orderPrice + params.trailingDistance
-          : orderPrice - params.trailingDistance
+          ? orderPrice + (params.trailingDistance * orderPrice / 100)
+          : orderPrice - (params.trailingDistance * orderPrice / 100)
       }
     }
 
@@ -320,13 +329,15 @@ class ExchangeService {
       volume: params.volume,
       price: orderPrice,
       leverage: params.leverage,
-      entryPrice: orderPrice,
+      entryPrice: price,
       triggerPrice,
       trailingDistance,
       createdAt: timestamp,
     }
 
     this.openOrders.set(orderId, openOrder)
+
+    const pendingOrders: PendingOrder[] = []
 
     // Create pending stop-loss order if priceSL is set
     if (params.priceSL) {
@@ -338,14 +349,15 @@ class ExchangeService {
         orderType: "stop-loss",
         pair: params.pair,
         volume: params.volume,
-        price: params.priceSL,
+        price: orderPrice,
         leverage: params.leverage,
-        entryPrice: params.priceSL,
+        entryPrice: orderPrice,
         triggerPrice: params.priceSL,
         trailingDistance: null,
         createdAt: timestamp,
       }
       this.pendingOrders.set(slOrderId, slOrder)
+      pendingOrders.push(slOrder)
     }
 
     // Create pending take-profit order (with optional trailing) if priceTP is set
@@ -355,14 +367,6 @@ class ExchangeService {
         ? "trailing-stop" 
         : "take-profit"
       
-      let tpTriggerPrice = params.priceTP
-      if (params.trailingDistance) {
-        // For trailing take-profit, set initial trigger based on TP price
-        tpTriggerPrice = params.type === "buy"
-          ? params.priceTP - params.trailingDistance
-          : params.priceTP + params.trailingDistance
-      }
-
       const tpOrder: PendingOrder = {
         id: tpOrderId,
         parentId: orderId,
@@ -370,17 +374,21 @@ class ExchangeService {
         orderType: tpOrderType,
         pair: params.pair,
         volume: params.volume,
-        price: params.priceTP,
+        price: orderPrice,
         leverage: params.leverage,
-        entryPrice: params.priceTP,
-        triggerPrice: tpTriggerPrice,
+        entryPrice: orderPrice,
+        triggerPrice: params.priceTP,
         trailingDistance: params.trailingDistance || null,
         createdAt: timestamp,
       }
       this.pendingOrders.set(tpOrderId, tpOrder)
+      pendingOrders.push(tpOrder)
     }
 
-    return openOrder
+    return {
+      openOrder,
+      pendingOrders,
+    }
   }
 
   /**
