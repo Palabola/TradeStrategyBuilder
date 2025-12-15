@@ -29,7 +29,7 @@ export type BlockCategory = "condition" | "action"
 
 export interface BlockConfig {
   label: string
-  description: string
+  description?: string
   promptDescription?: string
   labelPrefixFunction?: (params: Record<string, string | number>) => string
   labelPostfixFunction?: (params: Record<string, string | number>) => string

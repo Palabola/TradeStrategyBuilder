@@ -37,12 +37,14 @@ export function DraggableBlock({ blockType, config, id, themeOverride }: Draggab
       {...attributes}
       className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-grab active:cursor-grabbing ${effectiveBgColor} transition-all hover:scale-105`}
     >
-      <div className={`flex h-8 w-8 items-center justify-center rounded-md bg-card ${effectiveColor}`}>
-        <Icon className="h-4 w-4" />
+      <div className={`flex min-w-6 h-6 w-6 items-center justify-center rounded-md bg-card ${effectiveColor}`}>
+        <Icon className="min-w-4 h-4 w-4" />
       </div>
       <div>
         <p className="font-medium text-sm text-foreground">{config.label}</p>
-        <p className="text-xs text-muted-foreground">{config.description}</p>
+        {config.description && (
+          <p className="text-xs text-muted-foreground">{config.description}</p>
+        )}
       </div>
     </div>
   )

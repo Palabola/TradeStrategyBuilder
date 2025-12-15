@@ -286,7 +286,6 @@ export function StrategyPageClient({
     },
     "always": {
       label: "Always Trigger",
-      description: "Always trigger the action regardless of conditions",
       promptDescription: "Always triggers the associated action block. Use this to create actions that should run unconditionally every time.",
       icon: Bell,
       color: "text-yellow-500",

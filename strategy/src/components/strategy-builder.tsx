@@ -1306,10 +1306,12 @@ export function StrategyBuilder({
                   className={`w-full text-left p-3 rounded-lg border-2 transition-colors hover:opacity-80 ${effectiveBgColor}`}
                 >
                   <div className="flex items-center gap-3">
-                    <config.icon className={`h-5 w-5 ${effectiveColor}`} />
+                    <config.icon className={`min-w-5 h-5 w-5 ${effectiveColor}`} />
                     <div>
                       <p className={`font-medium ${effectiveColor}`}>{config.label}</p>
-                      <p className="text-xs text-muted-foreground">{config.description}</p>
+                      {config.description && (
+                        <p className="text-xs text-muted-foreground">{config.description}</p>
+                      )}
                     </div>
                   </div>
                 </button>

@@ -128,8 +128,6 @@ export function AnalysisPanel({
         fullResults: response,
       })
       
-      // Collapse the configuration card after successful analysis
-      setIsConfigCollapsed(true)
     } catch (error) {
       console.error("Analysis failed:", error)
     } finally {
