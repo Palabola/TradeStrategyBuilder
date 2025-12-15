@@ -77,7 +77,7 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
               options: {
                 indicator1: "Price",
                 timeframe1: "4h",
-                value: 5
+                value: 1
               }
             }
           ],
@@ -109,7 +109,7 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
               options: {
                 indicator1: "Price",
                 timeframe1: "4h",
-                value: 5
+                value: 1
               }
             }
           ],
