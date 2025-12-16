@@ -108,7 +108,7 @@ export function CanvasBlock({ id, blockType, config, values, onRemove, onValueCh
 
     return (
       <Select value={String(value)} onValueChange={(v) => onValueChange(param.name, v)}>
-        <SelectTrigger className="min-w-[100px]">
+        <SelectTrigger className="min-w-[216px] w-full">
           <SelectValue placeholder={`Select ${param.label}`} />
         </SelectTrigger>
         <SelectContent>
