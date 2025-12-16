@@ -50,8 +50,8 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [], ruleMark
 
   useEffect(() => {
     if (data && data.length > 0) {
-      // Take only the last 100 candles
-      const lastCandles = data.slice(-100)
+      // Take only the last 200 candles
+      const lastCandles = data.slice(-200)
       
       const formattedData: ChartDataPoint[] = lastCandles.map((candle) => {
         const isGreen = candle.close >= candle.open

@@ -631,7 +631,7 @@ export class StrategyRunner {
                   orderType = "limit";
                   triggerPrice = action.options?.limitPrice;
                   if(action.options?.unitLimit === '%') {
-                    triggerPrice = priceUSD + (action.action === "buy-limit"? 1 : -1) * (action.options?.unitLimit * 0.01 * priceUSD!);
+                    triggerPrice = priceUSD + (action.action === "buy-limit"? 1 : -1 ) * (action.options?.limitPrice * 0.01 * priceUSD!);
                   }
                 } else {
                   orderType = "market";

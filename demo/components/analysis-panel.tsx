@@ -64,6 +64,7 @@ export function AnalysisPanel({
   const [isLoadingCandles, setIsLoadingCandles] = useState(false)
   const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[]>([])
   const [ruleMarkers, setRuleMarkers] = useState<any[]>([])
+  const [candleLimit, setCandleLimit] = useState<number>(100)
   
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -116,15 +117,15 @@ export function AnalysisPanel({
       // Convert symbol format from "BTC/USD" to "BTCUSD"
       const krakenSymbol = currentSymbol.replace("/", "")
       const candleData = await candleService.fetchCandles(krakenSymbol, selectedTimeframe)
-      // Take last 200 candles
-      setCandles(candleData.slice(-200))
+      // Take last candleLimit candles
+      setCandles(candleData.slice(-candleLimit))
     } catch (error) {
       console.error("Failed to fetch candles:", error)
       setCandles([])
     } finally {
       setIsLoadingCandles(false)
     }
-  }, [currentSymbol, selectedTimeframe])
+  }, [currentSymbol, selectedTimeframe, candleLimit])
 
   useEffect(() => {
     fetchCandleData()
@@ -225,6 +226,10 @@ export function AnalysisPanel({
         triggeredEvents,
         fullResults: response,
       })
+      
+      // Update candle limit based on analysis results length
+      const newCandleLimit = Math.min(response.length + 10, 200)
+      setCandleLimit(newCandleLimit)
       
     } catch (error) {
       console.error("Analysis failed:", error)
