@@ -33,8 +33,6 @@ jobs:
 
       - name: Build
         working-directory: ./demo
-        env:
-          GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
         run: npm run build
 
       - name: Add .nojekyll file
