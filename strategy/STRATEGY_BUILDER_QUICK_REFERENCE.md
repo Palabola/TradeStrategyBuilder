@@ -185,6 +185,7 @@ interface StrategyBuilderProps {
   unitOptions?: string[]
   predefinedStrategies?: PredefinedStrategyTemplate[]
   onSave?: (strategy: StrategyTemplate) => void
+  onStrategyChange?: (strategy: StrategyTemplate | null) => void
   themeOverride?: CustomTheme
   supportedAIModels?: string[]
   callAIFunction?: (systemPrompt: string, userPrompts: string[], model: string) => Promise<string>

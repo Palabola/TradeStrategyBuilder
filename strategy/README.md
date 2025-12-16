@@ -131,6 +131,9 @@ interface StrategyBuilderProps {
   // Strategy persistence
   onSave?: (strategy: StrategyTemplate) => void
 
+  // Callback on strategy change
+  onStrategyChange?: (strategy: StrategyTemplate | null) => void
+
   // Theming
   themeOverride?: CustomTheme
 
