@@ -63,6 +63,7 @@ export function AnalysisPanel({
   const [candles, setCandles] = useState<Candle[]>([])
   const [isLoadingCandles, setIsLoadingCandles] = useState(false)
   const [tradeMarkers, setTradeMarkers] = useState<TradeMarker[]>([])
+  const [ruleMarkers, setRuleMarkers] = useState<any[]>([])
   
   // Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -79,6 +80,26 @@ export function AnalysisPanel({
   const currentSymbol = selectedStrategy?.symbols?.includes(selectedSymbol) 
     ? selectedSymbol 
     : selectedStrategy?.symbols?.[0] || ""
+
+  // Convert runIntervalMinutes to appropriate timeframe
+  const getTimeframeFromInterval = (runIntervalMinutes: number): Timeframe => {
+    if (runIntervalMinutes <= 1) return "1min"
+    if (runIntervalMinutes <= 5) return "5min"
+    if (runIntervalMinutes <= 15) return "15min"
+    if (runIntervalMinutes <= 30) return "30min"
+    if (runIntervalMinutes <= 60) return "1h"
+    if (runIntervalMinutes <= 240) return "4h"
+    if (runIntervalMinutes <= 1440) return "24h"
+    return "1w"
+  }
+
+  // Update timeframe when strategy changes
+  useEffect(() => {
+    if (selectedStrategy?.executionOptions?.runIntervalMinutes) {
+      const strategyTimeframe = getTimeframeFromInterval(selectedStrategy.executionOptions.runIntervalMinutes)
+      setSelectedTimeframe(strategyTimeframe)
+    }
+  }, [selectedStrategy])
 
   // Calculate iteration count from strategy template (max 250)
   const iterationCount = Math.min(selectedStrategy?.executionOptions?.maximumExecuteCount || 50, 250)
@@ -117,6 +138,7 @@ export function AnalysisPanel({
     setAnalysisResult(null)
     setExpandedResults(new Set())
     setTradeMarkers([]) // Clear previous trade markers
+    setRuleMarkers([]) // Clear previous rule markers
     
     const coinSymbol = currentSymbol.split("/")[0]
     const balances = [
@@ -148,6 +170,8 @@ export function AnalysisPanel({
       
       // Collect trade markers from triggered orders
       const markers: TradeMarker[] = []
+      // Collect rule markers from triggered rules
+      const ruleMarkersData: any[] = []
       
       for (const evaluation of response) {
         for (const triggeredRule of evaluation.triggeredRules) {
@@ -170,10 +194,24 @@ export function AnalysisPanel({
             })
           }
         }
+        
+        // Extract rule markers from triggered rules
+        if (evaluation.triggeredRules) {
+          for (const triggeredRule of evaluation.triggeredRules) {
+            ruleMarkersData.push({
+              timestamp: new Date(evaluation.evaluatedAt).getTime(),
+              ruleName: triggeredRule.ruleName,
+              ruleIndex: triggeredRule.ruleIndex,
+              conditions: triggeredRule.conditions,
+              actions: triggeredRule.actions,
+            })
+          }
+        }
       }
       
-      // Update trade markers state
+      // Update trade markers and rule markers state
       setTradeMarkers(markers)
+      setRuleMarkers(ruleMarkersData)
       
       // Convert to array format
       const ruleExecutions = Object.entries(ruleTriggeredCounts).map(([ruleName, triggeredCount]) => ({
@@ -278,7 +316,7 @@ export function AnalysisPanel({
                 {currentSymbol && selectedTimeframe && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Price Chart</Label>
-                    <OHLCChart data={candles} isLoading={isLoadingCandles} tradeMarkers={tradeMarkers} />
+                    <OHLCChart data={candles} isLoading={isLoadingCandles} tradeMarkers={tradeMarkers} ruleMarkers={ruleMarkers} />
                   </div>
                 )}
 

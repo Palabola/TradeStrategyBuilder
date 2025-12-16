@@ -67,12 +67,10 @@ export function StrategiesList() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Trading Strategies</CardTitle>
-        <Link href="/strategy">
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Strategy
-          </Button>
-        </Link>
+        <Button size="sm" className="gap-2" onClick={handleBlankStrategyClick}>
+          <Plus className="h-4 w-4" />
+          New Strategy
+        </Button>
       </CardHeader>
       <CardContent>
         {strategies.length === 0 ? (

@@ -27,6 +27,7 @@ interface OHLCChartProps {
   data: Candle[]
   isLoading?: boolean
   tradeMarkers?: TradeMarker[]
+  ruleMarkers?: any[]
 }
 
 interface ChartDataPoint {
@@ -40,9 +41,11 @@ interface ChartDataPoint {
   candleData: [number, number, number, number] // [low, open, close, high]
   // Trade marker data (if any trade occurred at this candle)
   tradeMarker?: TradeMarker
+  // Rule markers (triggered rules at this candle)
+  ruleMarkers?: any[]
 }
 
-export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCChartProps) {
+export function OHLCChart({ data, isLoading = false, tradeMarkers = [], ruleMarkers = [] }: OHLCChartProps) {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([])
 
   useEffect(() => {
@@ -60,6 +63,12 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
           return m.timestamp >= candleTime && m.timestamp < candleTime + getTimeframeMs(data)
         })
         
+        // Find rule markers for this candle (within the candle's time range)
+        const candleRuleMarkers = ruleMarkers.filter(m => {
+          // Check if the rule trigger timestamp falls within this candle's time period
+          return m.timestamp >= candleTime && m.timestamp < candleTime + getTimeframeMs(data)
+        })
+        
         return {
           time: candleTime,
           open: candle.open,
@@ -70,11 +79,12 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
           fill: isGreen ? "#22c55e" : "#ef4444", // green-500 : red-500
           candleData: [candle.low, candle.open, candle.close, candle.high],
           tradeMarker: marker,
+          ruleMarkers: candleRuleMarkers,
         }
       })
       setChartData(formattedData)
     }
-  }, [data, tradeMarkers])
+  }, [data, tradeMarkers, ruleMarkers])
   
   // Helper to estimate timeframe in ms from candle data
   function getTimeframeMs(candles: Candle[]): number {
@@ -141,6 +151,16 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
                 </div>
               </div>
             }
+            {data.ruleMarkers && data.ruleMarkers.length > 0 && 
+              <div className="pt-1 border-t border-border space-y-1">
+                {data.ruleMarkers.map((rule: any, index: number) => (
+                  <div key={index} className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Rule:</span>
+                    <span className="font-medium">{rule.ruleName}</span>
+                  </div>
+                ))}
+              </div>
+            }
           </div>
         </div>
       )
@@ -187,6 +207,7 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
     const bodyHeight = Math.max(bodyBottom - bodyTop, 1)
     
     const wickX = x + width / 2
+    const ruleMarkersArray = payload.ruleMarkers as any[] | undefined
     
     // Trade marker rendering
     const renderTradeMarker = () => {
@@ -227,6 +248,43 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
       }
     }
     
+    // Rule marker rendering - displayed at bottom of chart
+    const renderRuleMarker = () => {
+      if (!ruleMarkersArray || ruleMarkersArray.length === 0) return null
+      
+      // Position at the bottom of the chart
+      const markerY = chartTop + chartHeight - 10
+      const markerColor = "#3b82f6" // blue-500
+      const markerSize = 5
+      const markerCount = ruleMarkersArray.length
+      
+      return (
+        <g>
+          {/* Diamond shape for rule marker */}
+          <polygon
+            points={`${wickX},${markerY - markerSize} ${wickX + markerSize},${markerY} ${wickX},${markerY + markerSize} ${wickX - markerSize},${markerY}`}
+            fill={markerColor}
+            stroke={markerColor}
+            strokeWidth={1}
+          />
+          {/* Display count if multiple rules triggered */}
+          {markerCount > 1 && (
+            <text
+              x={wickX}
+              y={markerY}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize="8"
+              fill="white"
+              fontWeight="bold"
+            >
+              {markerCount}
+            </text>
+          )}
+        </g>
+      )
+    }
+    
     return (
       <g>
         {/* Wick line */}
@@ -250,6 +308,8 @@ export function OHLCChart({ data, isLoading = false, tradeMarkers = [] }: OHLCCh
         />
         {/* Trade marker */}
         {renderTradeMarker()}
+        {/* Rule marker */}
+        {renderRuleMarker()}
       </g>
     )
   }
