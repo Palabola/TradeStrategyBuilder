@@ -739,15 +739,6 @@ export function StrategyBuilder({
               Templates
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setImportDialogOpen(true)}
-            className="gap-2 bg-transparent"
-          >
-            <Upload className="h-4 w-4" />
-            Import
-          </Button>
           {supportedAIModels.length > 0 && callAIFunction && (
             <Button
               variant="outline"
@@ -759,9 +750,18 @@ export function StrategyBuilder({
               AI Builder
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportDialogOpen(true)}
+            className="gap-2 bg-transparent"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
           <Button variant="outline" size="sm" onClick={handlePreview} className="gap-2 bg-transparent">
             <Eye className="h-4 w-4" />
-            Preview
+            Export
           </Button>
           <Button size="sm" onClick={handleDeploy} className="gap-2">
             <Play className="h-4 w-4" />
@@ -883,7 +883,7 @@ export function StrategyBuilder({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-lg bg-card p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Strategy JSON Preview</h3>
+              <h3 className="text-lg font-semibold">Strategy Preview</h3>
               <Button variant="ghost" size="sm" onClick={() => setPreviewJson(null)}>
                 Close
               </Button>
@@ -1268,14 +1268,14 @@ export function StrategyBuilder({
                     <h4 className="font-medium text-foreground">{template.name}</h4>
                     <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
                     <div className="flex gap-2 mt-2">
-                      {template.strategy.symbols.slice(0, 3).map((symbol) => (
-                        <span key={symbol} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                          {symbol}
+                      {template.strategy.rules.slice(0, 3).map((rule, index) => (
+                        <span key={index} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                          {rule.name}
                         </span>
                       ))}
-                      {template.strategy.symbols.length > 3 && (
+                      {template.strategy.rules.length > 3 && (
                         <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                          +{template.strategy.symbols.length - 3} more
+                          +{template.strategy.rules.length - 3} more
                         </span>
                       )}
                     </div>
