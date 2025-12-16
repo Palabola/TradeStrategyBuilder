@@ -775,7 +775,16 @@ export function StrategyBuilder({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setDetailsDialogOpen(true)}
+                onClick={() => {
+                  // Initialize temp variables with current values
+                  setTempStrategyName(strategyName)
+                  setTempSelectedPairs([...selectedPairs])
+                  setTempRunIntervalMinutes(runIntervalMinutes)
+                  setTempMaximumExecuteCount(maximumExecuteCount)
+                  setTempIntervalBetweenExecutionsMinutes(intervalBetweenExecutionsMinutes)
+                  setTempMaximumOpenPositions(maximumOpenPositions)
+                  setDetailsDialogOpen(true)
+                }}
                 className="gap-1.5 h-7 text-xs"
               >
                 <Pencil className="h-3.5 w-3.5" />
