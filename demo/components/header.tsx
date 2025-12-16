@@ -1,10 +1,13 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {Activity } from "lucide-react"
 import { DarkModeToggle } from "./dark-mode-toggle"
 
 export function Header() {
+  const pathname = usePathname()
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className=" flex h-16 items-center justify-between px-4 mx-auto">
@@ -17,20 +20,45 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Link 
+              href="/" 
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/" 
+                  ? "text-foreground" 
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
               Dashboard
             </Link>
             <Link
               href="/strategy"
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                pathname.includes("/strategy") 
+                  ? "text-foreground" 
+                  : "text-muted-foreground hover:text-primary"
+              }`}
             >
               Strategy Builder
             </Link>
             <Link
               href="/analyze"
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                pathname.includes("/analyze") 
+                  ? "text-foreground" 
+                  : "text-muted-foreground hover:text-primary"
+              }`}
             >
               Strategy Analyzer
+            </Link>
+            <Link
+              href="/about"
+              className={`text-sm font-medium transition-colors ${
+                pathname.includes("/about") 
+                  ? "text-foreground" 
+                  : "text-muted-foreground hover:text-primary"
+              }`}
+            >
+              About
             </Link>
           </nav>
         </div>
