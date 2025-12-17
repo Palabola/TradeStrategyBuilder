@@ -195,8 +195,13 @@ export function CanvasBlock({ id, blockType, config, values, onRemove, onValueCh
           <Input
             type="number"
             value={value}
-            onChange={(e) => onValueChange(param.name, Number(e.target.value))}
+            onChange={(e) => {
+              const inputValue = e.target.value
+              // Allow empty string, otherwise convert to number
+              onValueChange(param.name, inputValue === '' ? '' : Number(inputValue))
+            }}
             placeholder={param.placeholder}
+            step={0.01}
           />
         )
       case "textarea":
