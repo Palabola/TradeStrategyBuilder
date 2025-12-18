@@ -387,7 +387,7 @@ interface ActionType {
 ## 🏷️ Package Info
 
 - **Name**: `@palabola86/trade-strategy-builder`
-- **Version**: 1.1.12
+- **Version**: 1.1.13
 - **License**: MIT
 - **Repository**: https://github.com/Palabola/TradeStrategyBuilder
 - **NPM**: https://www.npmjs.com/package/@palabola86/trade-strategy-builder

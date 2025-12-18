@@ -1076,7 +1076,7 @@ export function StrategyBuilder({
               value={importJson}
               onChange={(e) => setImportJson(e.target.value)}
               placeholder='{"strategyId": "...", "strategyName": "...", "symbols": [...], "rules": [...]}'
-              className="min-h-[300px] font-mono text-sm"
+              className="min-h-[300px] max-h-[450px] font-mono text-sm overflow-y-auto"
             />
             {importError && <p className="mt-2 text-sm text-destructive">{importError}</p>}
             <div className="mt-4 flex justify-end gap-2">
