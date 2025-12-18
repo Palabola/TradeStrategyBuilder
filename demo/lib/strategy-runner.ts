@@ -616,22 +616,28 @@ export class StrategyRunner {
             switch (action.options?.orderType) {
               case "Stop Loss":
                 orderType = "stop-loss";
-                triggerDistance = -(action.options?.distanceUnit === '%' ? action.options?.distance * 0.01 * priceUSD! : action.options?.distance);
+                if(action.options?.distanceUnit && action.options?.distance) {
+                  triggerDistance = -(action.options?.distanceUnit === '%' ? Number(action.options?.distance) * 0.01 * priceUSD! : Number(action.options?.distance));
+                }
                 break;
               case "Take Profit":
                 orderType = "take-profit";
-                triggerDistance = action.options?.distanceUnit === '%' ? action.options?.distance * 0.01 * priceUSD! : action.options?.distance;
+                if(action.options?.distanceUnit && action.options?.distance) {
+                  triggerDistance = (action.options.distanceUnit === '%' ? Number(action.options.distance) * 0.01 * priceUSD! :  Number(action.options.distance)) || 0;
+                }
                 break;
               case "Trailing Stop":
                 orderType = "trailing-stop";
-                triggerDistance = -(action.options?.distanceUnit === '%' ? action.options?.distance * 0.01 * priceUSD! : action.options?.distance);
+                if(action.options?.distanceUnit && action.options?.distance) {
+                  triggerDistance = -(action.options?.distanceUnit === '%' ? Number(action.options?.distance) * 0.01 * priceUSD! : Number(action.options?.distance));
+                }
                 break;
               default:
                 if(action.action === "buy-limit" || action.action === "sell-limit") {
                   orderType = "limit";
-                  triggerPrice = action.options?.limitPrice;
+                  triggerPrice = Number(action.options?.limitPrice) || priceUSD;
                   if(action.options?.unitLimit === '%') {
-                    triggerPrice = priceUSD + (action.action === "buy-limit"? 1 : -1 ) * (action.options?.limitPrice * 0.01 * priceUSD!);
+                    triggerPrice = priceUSD + (action.action === "buy-limit"? 1 : -1 ) * ((Number(action.options?.limitPrice) || 0) * 0.01 * priceUSD!);
                   }
                 } else {
                   orderType = "market";

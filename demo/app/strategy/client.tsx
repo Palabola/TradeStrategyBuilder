@@ -541,8 +541,8 @@ export function StrategyPageClient({
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 2xl:grid-cols-10 gap-4 w-full">
-        <div className="2xl:col-span-5">
+      <div className="grid grid-cols-1 2xl:grid-cols-20 gap-4 w-full">
+        <div className="2xl:col-span-11">
           <StrategyBuilder
             configOptions={configOptions}
             key={builderKey}
@@ -558,7 +558,7 @@ export function StrategyPageClient({
             callAIFunction={handleCallAI}
           />
         </div>
-        <div className="2xl:col-span-5">
+        <div className="2xl:col-span-9">
           {/* Analysis Panel */}
           <AnalysisPanel 
             selectedStrategy={currentStrategy}
