@@ -228,7 +228,7 @@ export function StrategyBuilder({
 
   // Execution Options state
   const [runIntervalMinutes, setRunIntervalMinutes] = useState<number>(60) // Default: 1 hour
-  const [maximumExecuteCount, setMaximumExecuteCount] = useState<number>(10)
+  const [maximumExecuteCount, setMaximumExecuteCount] = useState<number>(100)
   const [intervalBetweenExecutionsMinutes, setIntervalBetweenExecutionsMinutes] = useState<number>(60) // Default: 1 hour
   const [maximumOpenPositions, setMaximumOpenPositions] = useState<number>(1)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
@@ -237,7 +237,7 @@ export function StrategyBuilder({
   const [tempStrategyName, setTempStrategyName] = useState<string>("")
   const [tempSelectedPairs, setTempSelectedPairs] = useState<string[]>([])
   const [tempRunIntervalMinutes, setTempRunIntervalMinutes] = useState<number>(60)
-  const [tempMaximumExecuteCount, setTempMaximumExecuteCount] = useState<number>(10)
+  const [tempMaximumExecuteCount, setTempMaximumExecuteCount] = useState<number>(100)
   const [tempIntervalBetweenExecutionsMinutes, setTempIntervalBetweenExecutionsMinutes] = useState<number>(60)
   const [tempMaximumOpenPositions, setTempMaximumOpenPositions] = useState<number>(1)
 
@@ -487,6 +487,11 @@ export function StrategyBuilder({
     ])
     setStrategyName("New Strategy")
     setSelectedPairs(["BTC/USD"])
+    setMaximumExecuteCount(100)
+    setRunIntervalMinutes(60)
+    setIntervalBetweenExecutionsMinutes(60)
+    setMaximumOpenPositions(1)
+    setCurrentStrategyId(undefined)
 
     if(onStrategyChange) {
       onStrategyChange(null)
