@@ -21,32 +21,32 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
         maximumOpenPositions: 1
       },
       rules: [
-      {
-        name: "Buy the Dip",
-        conditions: [
-          {
-            index: 0,
-            type: "decreased-by",
-            options: {
-              indicator1: "Price",
-              timeframe1: "24h",
-              value: 5
+        {
+          name: "Buy the Dip",
+          conditions: [
+            {
+              index: 0,
+              type: "decreased-by",
+              options: {
+                indicator1: "Price",
+                timeframe1: "24h",
+                value: 5
+              }
             }
-          }
-        ],
-        actions: [
-          {
-            index: 0,
-            action: "buy",
-            options: {
-              amount: 25,
-              unit: "USD",
-              takeProfit: 10,
-              trailingStop: 5
+          ],
+          actions: [
+            {
+              index: 0,
+              action: "buy",
+              options: {
+                amount: 25,
+                unit: "USD",
+                takeProfit: 10,
+                trailingStop: 5
+              }
             }
-          }
-        ]
-      }
+          ]
+        }
       ]
     }
   },
@@ -134,170 +134,127 @@ export const predefinedStrategies: PredefinedStrategyTemplate[] = [
         }
       ]
     }
-  }, {
+  },
+  {
     id: "3",
-    name: "10x Leverage Futures",
-    description: "A comprehensive trading strategy using EMA and RSI indicators with 10x leverage on ETH and BTC.",
+    name: "Complex Multi-Indicator Strategy",
+    description: "A strategy that combines multiple indicators to make buy and sell decisions.",
     strategy: {
-      strategyName: "Complex 10x Leverage Strategy for ETH and BTC",
+      strategyName: "Complex Multi-Indicator Strategy",
       symbols: [
+        "BTC/USD",
         "ETH/USD",
-        "BTC/USD"
+        "SOL/USD"
       ],
       executionOptions: {
-        runIntervalMinutes: 15,
-        maximumExecuteCount: 50,
-        intervalBetweenExecutionsMinutes: 30,
+        runIntervalMinutes: 240,
+        maximumExecuteCount: 200,
+        intervalBetweenExecutionsMinutes: 240,
         maximumOpenPositions: 3
       },
       rules: [
         {
-          name: "Entry on Bullish Crossover",
+          name: "Buy on Bullish Signals",
           conditions: [
             {
               index: 0,
               type: "crossing-above",
               options: {
                 indicator1: "EMA(20)",
-                timeframe1: "1h",
+                timeframe1: "4h",
                 indicator2: "EMA(50)",
-                timeframe2: "1h"
-          }
+                timeframe2: "4h"
+              }
+            },
+            {
+              index: 1,
+              type: "greater-than",
+              options: {
+                indicator1: "RSI(14)",
+                timeframe1: "4h",
+                indicator2: "Value",
+                value: 40
+              }
+            }
+          ],
+          actions: [
+            {
+              index: 0,
+              action: "buy",
+              options: {
+                amount: 50,
+                unit: "USD",
+                stopLoss: 2,
+                takeProfit: 5
+              }
+            }
+          ]
         },
         {
-          index: 1,
-          type: "greater-than",
-          options: {
-            indicator1: "RSI(14)",
-            timeframe1: "1h",
-            indicator2: "Value",
-            value: 50
-          }
-        }
-      ],
-      actions: [
-        {
-          index: 0,
-          action: "open-position",
-          options: {
-            side: "LONG",
-            amount: 30,
-            unit: "%",
-            leverage: "10x",
-            stopLoss: 2,
-            takeProfit: 5
-          }
-        }
-      ]
-    },
-    {
-      name: "Entry on Bearish Crossover for Short",
-      conditions: [
-        {
-          index: 0,
-          type: "crossing-below",
-          options: {
-            indicator1: "EMA(20)",
-            timeframe1: "1h",
-            indicator2: "EMA(50)",
-            timeframe2: "1h"
-          }
+          name: "Sell on Bearish Signals",
+          conditions: [
+            {
+              index: 0,
+              type: "crossing-below",
+              options: {
+                indicator1: "EMA(20)",
+                timeframe1: "4h",
+                indicator2: "EMA(50)",
+                timeframe2: "4h"
+              }
+            },
+            {
+              index: 1,
+              type: "lower-than",
+              options: {
+                indicator1: "RSI(14)",
+                timeframe1: "4h",
+                indicator2: "Value",
+                value: 60
+              }
+            }
+          ],
+          actions: [
+            {
+              index: 0,
+              action: "sell",
+              options: {
+                amount: 100,
+                unit: "%",
+                stopLoss: 2,
+                takeProfit: 5
+              }
+            }
+          ]
         },
         {
-          index: 1,
-          type: "lower-than",
-          options: {
-            indicator1: "RSI(14)",
-            timeframe1: "1h",
-            indicator2: "Value",
-            value: 50
-          }
-        }
-      ],
-      actions: [
-        {
-          index: 0,
-          action: "open-position",
-          options: {
-            side: "SHORT",
-            amount: 30,
-            unit: "%",
-            leverage: "10x",
-            stopLoss: 2,
-            takeProfit: 5
-          }
-        }
-      ]
-    },
-    {
-      name: "Exit on Overbought RSI",
-      conditions: [
-        {
-          index: 0,
-          type: "greater-than",
-          options: {
-            indicator1: "RSI(14)",
-            timeframe1: "1h",
-            indicator2: "Value",
-            value: 70
-          }
-        }
-      ],
-      actions: [
-        {
-          index: 0,
-          action: "close-position",
-          options: {}
-        }
-      ]
-    },
-    {
-      name: "Exit on Oversold RSI",
-      conditions: [
-        {
-          index: 0,
-          type: "lower-than",
-          options: {
-            indicator1: "RSI(14)",
-            timeframe1: "1h",
-            indicator2: "Value",
-            value: 30
-          }
-        }
-      ],
-      actions: [
-        {
-          index: 0,
-          action: "close-position",
-          options: {}
-        }
-      ]
-    },
-    {
-      name: "Notify on High Volatility",
-      conditions: [
-        {
-          index: 0,
-          type: "increased-by",
-          options: {
-            indicator1: "Price",
-            timeframe1: "15min",
-            value: 2
-          }
-        }
-      ],
-      actions: [
-        {
-          index: 0,
-          action: "notify-me",
-          options: {
-            channel: "Telegram",
-            message: "High volatility detected in ETH or BTC!"
-          }
+          name: "Emergency Sell on Overbought",
+          conditions: [
+            {
+              index: 0,
+              type: "greater-than",
+              options: {
+                indicator1: "RSI(7)",
+                timeframe1: "1h",
+                indicator2: "Value",
+                value: 80
+              }
+            }
+          ],
+          actions: [
+            {
+              index: 0,
+              action: "sell",
+              options: {
+                amount: 100,
+                unit: "%",
+                stopLoss: 1,
+                takeProfit: 3
+              }
+            }
+          ]
         }
       ]
     }
-  ]
-}
-}
+  }
 ]

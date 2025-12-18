@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getStrategyById, saveStrategyToStorage } from "@/lib/strategy-storage"
+import { getStrategyById, saveDraftStrategyToStorage, saveStrategyToStorage } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -29,7 +29,22 @@ const GRAYSCALE_THEME: CustomTheme = (() => {
       bgColor: "bg-gray-500/10 border-gray-500/30",
     }
   }
-  
+
+  blocks["always"] = {
+    color: "text-gray-500",
+    bgColor: "bg-gray-500/10 border-gray-500/30",
+  }
+
+  blocks['buy-limit'] = {
+    color: "text-gray-500",
+    bgColor: "bg-gray-500/10 border-gray-500/30",
+  }
+
+  blocks['sell-limit'] = {
+    color: "text-gray-500",
+    bgColor: "bg-gray-500/10 border-gray-500/30",
+  }
+
   return { blocks }
 })()
 
@@ -295,28 +310,23 @@ export function StrategyPageClient({
     },
   }), [unitOptions])
 
+  // Save strategy handler
   const handleSave = useCallback((strategy: StrategyTemplate) => {
-    const savedStrategy = saveStrategyToStorage(strategy)
+    saveStrategyToStorage(strategy)
     setShowDeployDialog(true)
   }, [])
 
   // Handle strategy changes from the builder
   const handleStrategyChange = useCallback((strategy: StrategyTemplate | null) => {
     setCurrentStrategy(strategy)
-    // Save strategy to localStorage as draft
-    if (strategy) {
-      try {
-        localStorage.setItem('strategy-draft', JSON.stringify(strategy))
-      } catch (error) {
-        console.warn('Failed to save strategy draft to localStorage:', error)
-      }
-    }  else {
-      localStorage.removeItem('strategy-draft')
-    }
+    saveDraftStrategyToStorage(strategy)
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI
-  const handleCallAI = useCallback(async (systemPrompt: string, userPrompts: string[], model: string): Promise<string> => {
+  const handleCallAI = useCallback(async (
+    systemPrompt: string, 
+    userPrompts: string[], 
+    model: string): Promise<string> => {
     return await agentService.callAI(systemPrompt, userPrompts, model)
   }, [])
 
@@ -543,20 +553,22 @@ export function StrategyPageClient({
 
       <div className="grid grid-cols-1 2xl:grid-cols-20 gap-4 w-full">
         <div className="2xl:col-span-11">
+
           <StrategyBuilder
-            configOptions={configOptions}
-            key={builderKey}
             initialStrategy={effectiveInitialStrategy}
+            configOptions={configOptions}
+            themeOverride={computedTheme}
             candleOptions={candleOptions}
             indicatorOptions={indicatorOptions}
             unitOptions={unitOptions}
             predefinedStrategies={predefinedStrategies}
+            supportedAIModels={supportedModels}
             onSave={handleSave}
             onStrategyChange={handleStrategyChange}
-            themeOverride={computedTheme}
-            supportedAIModels={supportedModels}
             callAIFunction={handleCallAI}
           />
+
+
         </div>
         <div className="2xl:col-span-9">
           {/* Analysis Panel */}

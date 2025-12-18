@@ -15,6 +15,18 @@ export function getSavedStrategies(): StrategyTemplate[] {
   }
 }
 
+export function saveDraftStrategyToStorage(strategy: StrategyTemplate | null): void {
+  if (strategy) {
+    try {
+      localStorage.setItem('strategy-draft', JSON.stringify(strategy))
+    } catch (error) {
+      console.warn('Failed to save strategy draft to localStorage:', error)
+    }
+  }  else {
+    localStorage.removeItem('strategy-draft')
+  }
+}
+
 export function saveStrategyToStorage(strategy: StrategyTemplate): StrategyTemplate {
   const strategies = getSavedStrategies()
   const now = new Date().toISOString()
