@@ -39,7 +39,7 @@ interface ResultsPanelProps {
 
 export function ResultsPanel({ analysisResult, expandedResults, onToggleResultExpanded }: ResultsPanelProps) {
   return (
-    <div className="lg:col-span-2">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Analysis Results</CardTitle>

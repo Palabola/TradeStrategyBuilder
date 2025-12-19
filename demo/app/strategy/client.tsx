@@ -343,11 +343,6 @@ export function StrategyPageClient({
     }
   }, [themeOption, initialThemeOverride])
 
-  // Generate a key that changes when options change to force StrategyBuilder to re-mount
-  const builderKey = useMemo(() => {
-    return `${themeOption}-${candleOptions.join(",")}-${indicatorOptions.map(i => `${i.name}:${i.category}`).join(",")}`
-  }, [themeOption, candleOptions, indicatorOptions])
-
   // Candle options handlers
   const addCandleOption = () => {
     if (newCandle.trim() && !candleOptions.includes(newCandle.trim())) {
