@@ -2,7 +2,8 @@
 
 A visual drag-and-drop trading strategy builder component for React and Next.js applications. Build complex trading strategies with an intuitive interface featuring condition blocks, action blocks, and rule-based logic.
 
-![live demo](https://palabola.github.io/TradeStrategyBuilder/strategy/)
+[Live Demo](https://palabola.github.io/TradeStrategyBuilder)
+
 ![npm version](https://img.shields.io/npm/v/@palabola86/trade-strategy-builder)
 ![license](https://img.shields.io/npm/l/@palabola86/trade-strategy-builder)
 
