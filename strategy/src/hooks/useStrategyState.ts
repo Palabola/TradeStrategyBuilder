@@ -121,8 +121,6 @@ export interface StrategyStateReturn {
   // UI state
   previewJson: string | null
   setPreviewJson: React.Dispatch<React.SetStateAction<string | null>>
-  pairPopoverOpen: boolean
-  setPairPopoverOpen: React.Dispatch<React.SetStateAction<boolean>>
   blockCategory: BlockCategory
   setBlockCategory: React.Dispatch<React.SetStateAction<BlockCategory>>
 
@@ -167,20 +165,6 @@ export interface StrategyStateReturn {
   setIntervalBetweenExecutionsMinutes: React.Dispatch<React.SetStateAction<number>>
   maximumOpenPositions: number
   setMaximumOpenPositions: React.Dispatch<React.SetStateAction<number>>
-
-  // Temporary state for Strategy Details dialog
-  tempStrategyName: string
-  setTempStrategyName: React.Dispatch<React.SetStateAction<string>>
-  tempSelectedPairs: string[]
-  setTempSelectedPairs: React.Dispatch<React.SetStateAction<string[]>>
-  tempRunIntervalMinutes: number
-  setTempRunIntervalMinutes: React.Dispatch<React.SetStateAction<number>>
-  tempMaximumExecuteCount: number
-  setTempMaximumExecuteCount: React.Dispatch<React.SetStateAction<number>>
-  tempIntervalBetweenExecutionsMinutes: number
-  setTempIntervalBetweenExecutionsMinutes: React.Dispatch<React.SetStateAction<number>>
-  tempMaximumOpenPositions: number
-  setTempMaximumOpenPositions: React.Dispatch<React.SetStateAction<number>>
 
   // Computed values
   displayedBlocks: BlockType[]
@@ -230,7 +214,6 @@ export function useStrategyState({
 
   // UI state
   const [previewJson, setPreviewJson] = useState<string | null>(null)
-  const [pairPopoverOpen, setPairPopoverOpen] = useState(false)
   const [blockCategory, setBlockCategory] = useState<BlockCategory>("condition")
 
   // Dialog states
@@ -263,16 +246,6 @@ export function useStrategyState({
   )
   const [maximumOpenPositions, setMaximumOpenPositions] = useState<number>(DEFAULT_EXECUTION_OPTIONS.maximumOpenPositions)
 
-  // Temporary state for Strategy Details dialog
-  const [tempStrategyName, setTempStrategyName] = useState<string>("")
-  const [tempSelectedPairs, setTempSelectedPairs] = useState<string[]>([])
-  const [tempRunIntervalMinutes, setTempRunIntervalMinutes] = useState<number>(DEFAULT_EXECUTION_OPTIONS.runIntervalMinutes)
-  const [tempMaximumExecuteCount, setTempMaximumExecuteCount] = useState<number>(DEFAULT_EXECUTION_OPTIONS.maximumExecuteCount)
-  const [tempIntervalBetweenExecutionsMinutes, setTempIntervalBetweenExecutionsMinutes] = useState<number>(
-    DEFAULT_EXECUTION_OPTIONS.intervalBetweenExecutionsMinutes
-  )
-  const [tempMaximumOpenPositions, setTempMaximumOpenPositions] = useState<number>(DEFAULT_EXECUTION_OPTIONS.maximumOpenPositions)
-
   // Computed values
   const displayedBlocks = blockCategory === "condition" ? conditionBlocks : actionBlocks
 
@@ -303,8 +276,6 @@ export function useStrategyState({
     // UI state
     previewJson,
     setPreviewJson,
-    pairPopoverOpen,
-    setPairPopoverOpen,
     blockCategory,
     setBlockCategory,
 
@@ -349,20 +320,6 @@ export function useStrategyState({
     setIntervalBetweenExecutionsMinutes,
     maximumOpenPositions,
     setMaximumOpenPositions,
-
-    // Temporary state for Strategy Details dialog
-    tempStrategyName,
-    setTempStrategyName,
-    tempSelectedPairs,
-    setTempSelectedPairs,
-    tempRunIntervalMinutes,
-    setTempRunIntervalMinutes,
-    tempMaximumExecuteCount,
-    setTempMaximumExecuteCount,
-    tempIntervalBetweenExecutionsMinutes,
-    setTempIntervalBetweenExecutionsMinutes,
-    tempMaximumOpenPositions,
-    setTempMaximumOpenPositions,
 
     // Computed values
     displayedBlocks,

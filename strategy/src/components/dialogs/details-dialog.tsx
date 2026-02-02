@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
@@ -9,48 +10,74 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { Plus, X } from "lucide-react"
 import { tradingPairs, runIntervalOptions } from "../block-types"
 
+export interface StrategyDetailsData {
+  strategyName: string
+  selectedPairs: string[]
+  runIntervalMinutes: number
+  maximumExecuteCount: number
+  intervalBetweenExecutionsMinutes: number
+  maximumOpenPositions: number
+}
+
 interface DetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  tempStrategyName: string
-  setTempStrategyName: (name: string) => void
-  tempSelectedPairs: string[]
-  setTempSelectedPairs: (pairs: string[]) => void
-  tempRunIntervalMinutes: number
-  setTempRunIntervalMinutes: (minutes: number) => void
-  tempMaximumExecuteCount: number
-  setTempMaximumExecuteCount: (count: number) => void
-  tempIntervalBetweenExecutionsMinutes: number
-  setTempIntervalBetweenExecutionsMinutes: (minutes: number) => void
-  tempMaximumOpenPositions: number
-  setTempMaximumOpenPositions: (positions: number) => void
-  pairPopoverOpen: boolean
-  setPairPopoverOpen: (open: boolean) => void
-  onAddPair: (pair: string) => void
-  onRemovePair: (pair: string) => void
-  onDone: () => void
+  /** Initial values to populate the dialog when opened */
+  initialData: StrategyDetailsData
+  /** Callback when user confirms changes */
+  onSave: (data: StrategyDetailsData) => void
 }
 
 export function DetailsDialog({
   open,
   onOpenChange,
-  tempStrategyName,
-  setTempStrategyName,
-  tempSelectedPairs,
-  tempRunIntervalMinutes,
-  setTempRunIntervalMinutes,
-  tempMaximumExecuteCount,
-  setTempMaximumExecuteCount,
-  tempIntervalBetweenExecutionsMinutes,
-  setTempIntervalBetweenExecutionsMinutes,
-  tempMaximumOpenPositions,
-  setTempMaximumOpenPositions,
-  pairPopoverOpen,
-  setPairPopoverOpen,
-  onAddPair,
-  onRemovePair,
-  onDone,
+  initialData,
+  onSave,
 }: DetailsDialogProps) {
+  // Internal state for the dialog form
+  const [tempStrategyName, setTempStrategyName] = useState(initialData.strategyName)
+  const [tempSelectedPairs, setTempSelectedPairs] = useState<string[]>(initialData.selectedPairs)
+  const [tempRunIntervalMinutes, setTempRunIntervalMinutes] = useState(initialData.runIntervalMinutes)
+  const [tempMaximumExecuteCount, setTempMaximumExecuteCount] = useState(initialData.maximumExecuteCount)
+  const [tempIntervalBetweenExecutionsMinutes, setTempIntervalBetweenExecutionsMinutes] = useState(initialData.intervalBetweenExecutionsMinutes)
+  const [tempMaximumOpenPositions, setTempMaximumOpenPositions] = useState(initialData.maximumOpenPositions)
+  const [pairPopoverOpen, setPairPopoverOpen] = useState(false)
+
+  // Sync internal state when dialog opens with new initial data
+  useEffect(() => {
+    if (open) {
+      setTempStrategyName(initialData.strategyName)
+      setTempSelectedPairs([...initialData.selectedPairs])
+      setTempRunIntervalMinutes(initialData.runIntervalMinutes)
+      setTempMaximumExecuteCount(initialData.maximumExecuteCount)
+      setTempIntervalBetweenExecutionsMinutes(initialData.intervalBetweenExecutionsMinutes)
+      setTempMaximumOpenPositions(initialData.maximumOpenPositions)
+    }
+  }, [open, initialData])
+
+  const handleAddPair = (pair: string) => {
+    if (!tempSelectedPairs.includes(pair)) {
+      setTempSelectedPairs((prev) => [...prev, pair])
+    }
+    setPairPopoverOpen(false)
+  }
+
+  const handleRemovePair = (pair: string) => {
+    setTempSelectedPairs((prev) => prev.filter((p) => p !== pair))
+  }
+
+  const handleDone = () => {
+    onSave({
+      strategyName: tempStrategyName,
+      selectedPairs: tempSelectedPairs,
+      runIntervalMinutes: tempRunIntervalMinutes,
+      maximumExecuteCount: tempMaximumExecuteCount,
+      intervalBetweenExecutionsMinutes: tempIntervalBetweenExecutionsMinutes,
+      maximumOpenPositions: tempMaximumOpenPositions,
+    })
+    onOpenChange(false)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -78,7 +105,7 @@ export function DetailsDialog({
                   >
                     <span>{pair}</span>
                     <button
-                      onClick={() => onRemovePair(pair)}
+                      onClick={() => handleRemovePair(pair)}
                       className="hover:bg-primary/20 rounded-full p-0.5"
                     >
                       <X className="h-3 w-3" />
@@ -101,7 +128,7 @@ export function DetailsDialog({
                     .map((pair) => (
                       <button
                         key={pair}
-                        onClick={() => onAddPair(pair)}
+                        onClick={() => handleAddPair(pair)}
                         className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
                       >
                         {pair}
@@ -181,7 +208,7 @@ export function DetailsDialog({
           </div>
 
           <div className="flex justify-end pt-2">
-            <Button size="sm" onClick={onDone}>
+            <Button size="sm" onClick={handleDone}>
               Done
             </Button>
           </div>

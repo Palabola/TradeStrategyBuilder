@@ -117,14 +117,6 @@ export interface UseStrategyActionsProps {
   importJson: string
   mobileBlockPickerTarget: { groupId: string; category: BlockCategory } | null
 
-  // Temp state values
-  tempStrategyName: string
-  tempSelectedPairs: string[]
-  tempRunIntervalMinutes: number
-  tempMaximumExecuteCount: number
-  tempIntervalBetweenExecutionsMinutes: number
-  tempMaximumOpenPositions: number
-
   // State setters
   setStrategyName: React.Dispatch<React.SetStateAction<string>>
   setSelectedPairs: React.Dispatch<React.SetStateAction<string[]>>
@@ -138,16 +130,12 @@ export interface UseStrategyActionsProps {
   setImportJson: React.Dispatch<React.SetStateAction<string>>
   setImportError: React.Dispatch<React.SetStateAction<string | null>>
   setTemplatesDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  setDetailsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   setMobileBlockPickerOpen: React.Dispatch<React.SetStateAction<boolean>>
   setMobileBlockPickerTarget: React.Dispatch<React.SetStateAction<{ groupId: string; category: BlockCategory } | null>>
   setRunIntervalMinutes: React.Dispatch<React.SetStateAction<number>>
   setMaximumExecuteCount: React.Dispatch<React.SetStateAction<number>>
   setIntervalBetweenExecutionsMinutes: React.Dispatch<React.SetStateAction<number>>
   setMaximumOpenPositions: React.Dispatch<React.SetStateAction<number>>
-
-  // Temp state setters
-  setTempSelectedPairs: React.Dispatch<React.SetStateAction<string[]>>
 
   // Callbacks
   onSave?: (strategy: StrategyTemplate) => void
@@ -181,11 +169,6 @@ export interface StrategyActionsReturn {
   handleMobileDropZoneClick: (groupId: string, category: BlockCategory) => void
   handleMobileBlockSelect: (blockType: BlockType) => void
 
-  // Dialog handlers
-  handleDetailsDialogDone: () => void
-  handleTempAddPair: (pair: string) => void
-  handleTempRemovePair: (pair: string) => void
-
   // Utility functions
   getIntervalLabel: (minutes: number) => string
 }
@@ -206,12 +189,6 @@ export function useStrategyActions({
   maximumOpenPositions,
   importJson,
   mobileBlockPickerTarget,
-  tempStrategyName,
-  tempSelectedPairs,
-  tempRunIntervalMinutes,
-  tempMaximumExecuteCount,
-  tempIntervalBetweenExecutionsMinutes,
-  tempMaximumOpenPositions,
   setStrategyName,
   setSelectedPairs,
   setRuleGroups,
@@ -224,14 +201,12 @@ export function useStrategyActions({
   setImportJson,
   setImportError,
   setTemplatesDialogOpen,
-  setDetailsDialogOpen,
   setMobileBlockPickerOpen,
   setMobileBlockPickerTarget,
   setRunIntervalMinutes,
   setMaximumExecuteCount,
   setIntervalBetweenExecutionsMinutes,
   setMaximumOpenPositions,
-  setTempSelectedPairs,
   onSave,
   onStrategyChange,
 }: UseStrategyActionsProps): StrategyActionsReturn {
@@ -706,47 +681,6 @@ export function useStrategyActions({
     [customBlockConfigs, mobileBlockPickerTarget, setRuleGroups, setMobileBlockPickerOpen, setMobileBlockPickerTarget]
   )
 
-  // Dialog handlers
-  const handleDetailsDialogDone = useCallback(() => {
-    setStrategyName(tempStrategyName)
-    setSelectedPairs([...tempSelectedPairs])
-    setRunIntervalMinutes(tempRunIntervalMinutes)
-    setMaximumExecuteCount(tempMaximumExecuteCount)
-    setIntervalBetweenExecutionsMinutes(tempIntervalBetweenExecutionsMinutes)
-    setMaximumOpenPositions(tempMaximumOpenPositions)
-    setDetailsDialogOpen(false)
-  }, [
-    tempStrategyName,
-    tempSelectedPairs,
-    tempRunIntervalMinutes,
-    tempMaximumExecuteCount,
-    tempIntervalBetweenExecutionsMinutes,
-    tempMaximumOpenPositions,
-    setStrategyName,
-    setSelectedPairs,
-    setRunIntervalMinutes,
-    setMaximumExecuteCount,
-    setIntervalBetweenExecutionsMinutes,
-    setMaximumOpenPositions,
-    setDetailsDialogOpen,
-  ])
-
-  const handleTempAddPair = useCallback(
-    (pair: string) => {
-      if (!tempSelectedPairs.includes(pair)) {
-        setTempSelectedPairs((prev) => [...prev, pair])
-      }
-    },
-    [tempSelectedPairs, setTempSelectedPairs]
-  )
-
-  const handleTempRemovePair = useCallback(
-    (pair: string) => {
-      setTempSelectedPairs((prev) => prev.filter((p) => p !== pair))
-    },
-    [setTempSelectedPairs]
-  )
-
   return {
     // Drag handlers
     handleDragStart,
@@ -773,11 +707,6 @@ export function useStrategyActions({
     // Mobile handlers
     handleMobileDropZoneClick,
     handleMobileBlockSelect,
-
-    // Dialog handlers
-    handleDetailsDialogDone,
-    handleTempAddPair,
-    handleTempRemovePair,
 
     // Utility functions
     getIntervalLabel,

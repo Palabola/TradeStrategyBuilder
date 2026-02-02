@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { DraggableBlock } from "./draggable-block"
 import { RuleDropZone } from "./rule-drop-zone"
-import { ImportDialog, DetailsDialog, AIDialog, TemplatesDialog } from "./dialogs"
+import { ImportDialog, DetailsDialog, AIDialog, TemplatesDialog, type StrategyDetailsData } from "./dialogs"
 import {
   blockConfigs,
   candleOptions as defaultCandleOptions,
@@ -73,12 +73,6 @@ export function StrategyBuilder({
     maximumOpenPositions: state.maximumOpenPositions,
     importJson: state.importJson,
     mobileBlockPickerTarget: state.mobileBlockPickerTarget,
-    tempStrategyName: state.tempStrategyName,
-    tempSelectedPairs: state.tempSelectedPairs,
-    tempRunIntervalMinutes: state.tempRunIntervalMinutes,
-    tempMaximumExecuteCount: state.tempMaximumExecuteCount,
-    tempIntervalBetweenExecutionsMinutes: state.tempIntervalBetweenExecutionsMinutes,
-    tempMaximumOpenPositions: state.tempMaximumOpenPositions,
     setStrategyName: state.setStrategyName,
     setSelectedPairs: state.setSelectedPairs,
     setRuleGroups: state.setRuleGroups,
@@ -91,14 +85,12 @@ export function StrategyBuilder({
     setImportJson: state.setImportJson,
     setImportError: state.setImportError,
     setTemplatesDialogOpen: state.setTemplatesDialogOpen,
-    setDetailsDialogOpen: state.setDetailsDialogOpen,
     setMobileBlockPickerOpen: state.setMobileBlockPickerOpen,
     setMobileBlockPickerTarget: state.setMobileBlockPickerTarget,
     setRunIntervalMinutes: state.setRunIntervalMinutes,
     setMaximumExecuteCount: state.setMaximumExecuteCount,
     setIntervalBetweenExecutionsMinutes: state.setIntervalBetweenExecutionsMinutes,
     setMaximumOpenPositions: state.setMaximumOpenPositions,
-    setTempSelectedPairs: state.setTempSelectedPairs,
     onSave,
     onStrategyChange,
   })
@@ -201,16 +193,7 @@ export function StrategyBuilder({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  // Initialize temp variables with current values
-                  state.setTempStrategyName(state.strategyName)
-                  state.setTempSelectedPairs([...state.selectedPairs])
-                  state.setTempRunIntervalMinutes(state.runIntervalMinutes)
-                  state.setTempMaximumExecuteCount(state.maximumExecuteCount)
-                  state.setTempIntervalBetweenExecutionsMinutes(state.intervalBetweenExecutionsMinutes)
-                  state.setTempMaximumOpenPositions(state.maximumOpenPositions)
-                  state.setDetailsDialogOpen(true)
-                }}
+                onClick={() => state.setDetailsDialogOpen(true)}
                 className="gap-1.5 h-7 text-xs"
               >
                 <Pencil className="h-3.5 w-3.5" />
@@ -339,23 +322,22 @@ export function StrategyBuilder({
       <DetailsDialog
         open={state.detailsDialogOpen}
         onOpenChange={state.setDetailsDialogOpen}
-        tempStrategyName={state.tempStrategyName}
-        setTempStrategyName={state.setTempStrategyName}
-        tempSelectedPairs={state.tempSelectedPairs}
-        setTempSelectedPairs={state.setTempSelectedPairs}
-        tempRunIntervalMinutes={state.tempRunIntervalMinutes}
-        setTempRunIntervalMinutes={state.setTempRunIntervalMinutes}
-        tempMaximumExecuteCount={state.tempMaximumExecuteCount}
-        setTempMaximumExecuteCount={state.setTempMaximumExecuteCount}
-        tempIntervalBetweenExecutionsMinutes={state.tempIntervalBetweenExecutionsMinutes}
-        setTempIntervalBetweenExecutionsMinutes={state.setTempIntervalBetweenExecutionsMinutes}
-        tempMaximumOpenPositions={state.tempMaximumOpenPositions}
-        setTempMaximumOpenPositions={state.setTempMaximumOpenPositions}
-        pairPopoverOpen={state.pairPopoverOpen}
-        setPairPopoverOpen={state.setPairPopoverOpen}
-        onAddPair={actions.handleTempAddPair}
-        onRemovePair={actions.handleTempRemovePair}
-        onDone={actions.handleDetailsDialogDone}
+        initialData={{
+          strategyName: state.strategyName,
+          selectedPairs: state.selectedPairs,
+          runIntervalMinutes: state.runIntervalMinutes,
+          maximumExecuteCount: state.maximumExecuteCount,
+          intervalBetweenExecutionsMinutes: state.intervalBetweenExecutionsMinutes,
+          maximumOpenPositions: state.maximumOpenPositions,
+        }}
+        onSave={(data: StrategyDetailsData) => {
+          state.setStrategyName(data.strategyName)
+          state.setSelectedPairs(data.selectedPairs)
+          state.setRunIntervalMinutes(data.runIntervalMinutes)
+          state.setMaximumExecuteCount(data.maximumExecuteCount)
+          state.setIntervalBetweenExecutionsMinutes(data.intervalBetweenExecutionsMinutes)
+          state.setMaximumOpenPositions(data.maximumOpenPositions)
+        }}
       />
 
       <ImportDialog
