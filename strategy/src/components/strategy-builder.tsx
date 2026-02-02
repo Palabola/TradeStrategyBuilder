@@ -1,5 +1,14 @@
 "use client"
 
+/**
+ * StrategyBuilder Component
+ * 
+ * Main component for building trading strategies with drag-and-drop blocks.
+ * Uses custom hooks (useStrategyState and useStrategyActions) for state management
+ * and action handlers to maintain clean separation of concerns.
+ * 
+ */
+
 import { useEffect, useId } from "react"
 import {
   DndContext,
@@ -107,14 +116,19 @@ export function StrategyBuilder({
     }
   }, [initialStrategy, actions.loadStrategyFromJson])
 
-  // Call onStrategyChange whenever strategy state changes
+  // Call onStrategyChange whenever strategy state changes (debounced to prevent excessive calls)
   useEffect(() => {
-    if (onStrategyChange) {
+    if (!onStrategyChange) return
+
+    const timeoutId = setTimeout(() => {
       const result = actions.generateStrategyJson()
       if (result.success) {
         onStrategyChange(result.data!)
       }
-    }
+    }, 300) // Debounce by 300ms
+
+    // Cleanup function to cancel pending timeout on unmount or dependency change
+    return () => clearTimeout(timeoutId)
   }, [
     onStrategyChange,
     state.strategyName,
@@ -124,6 +138,7 @@ export function StrategyBuilder({
     state.maximumExecuteCount,
     state.intervalBetweenExecutionsMinutes,
     state.maximumOpenPositions,
+    actions.generateStrategyJson,
   ])
 
   const sensors = useSensors(
