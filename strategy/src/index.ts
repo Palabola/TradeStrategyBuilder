@@ -35,5 +35,16 @@ export type {
     BlockType,
 } from "./types"
 
+// Hooks for advanced customization
+export { useStrategyState, useStrategyActions } from "./hooks"
+export type { 
+    UseStrategyStateProps, 
+    StrategyStateReturn, 
+    CanvasItem, 
+    RuleGroup,
+    UseStrategyActionsProps, 
+    StrategyActionsReturn,
+} from "./hooks"
+
 // UI Components (optional - consumers might want to use them)
 export * from "./components/ui"
