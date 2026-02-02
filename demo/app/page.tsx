@@ -1,8 +1,5 @@
 import { Header } from "@/components/header"
 import { StrategiesList } from "@/components/dashboard/strategies-list"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Plus, Zap } from "lucide-react"
 
 export default function DashboardPage() {
   return (
