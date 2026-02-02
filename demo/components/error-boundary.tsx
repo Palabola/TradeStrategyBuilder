@@ -73,24 +73,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 </Button>
               </Link>
             </div>
-
-            {process.env.NODE_ENV === "development" && this.state.error && (
-              <details className="mt-8 w-full">
-                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                  Error Details (Development Only)
-                </summary>
-                <div className="mt-3 p-4 bg-muted rounded-md overflow-auto">
-                  <p className="text-sm font-mono text-destructive break-all">
-                    {this.state.error.message}
-                  </p>
-                  {this.state.error.stack && (
-                    <pre className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap break-all">
-                      {this.state.error.stack}
-                    </pre>
-                  )}
-                </div>
-              </details>
-            )}
           </div>
         </div>
       )
