@@ -19,24 +19,19 @@ import {
 } from "@dnd-kit/core"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import { Label } from "./ui/label"
-import { Textarea } from "./ui/textarea"
 import { DraggableBlock } from "./draggable-block"
 import { RuleDropZone } from "./rule-drop-zone"
+import { ImportDialog, DetailsDialog, AIDialog, TemplatesDialog } from "./dialogs"
 import {
   blockConfigs,
-  tradingPairs,
   candleOptions as defaultCandleOptions,
   indicatorOptions as defaultIndicatorOptions,
   unitOptions as defaultUnitOptions,
-  runIntervalOptions,
   STATIC_SYSTEM_PROMPT_V1,
   leverageOptions,
+  tradingPairs,
 } from "./block-types"
-import { Play, RotateCcw, Plus, Eye, X, Upload, LayoutTemplate, Sparkles, Loader2, Pencil } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
+import { Play, RotateCcw, Plus, Eye, Upload, LayoutTemplate, Sparkles, Pencil } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
 import { BlockConfig, BlockType, CustomTheme, StrategyBuilderProps } from "../types"
 import { useStrategyState } from "../hooks/useStrategyState"
@@ -341,392 +336,93 @@ export function StrategyBuilder({
         </div>
       )}
 
-      <Dialog open={state.detailsDialogOpen} onOpenChange={state.setDetailsDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Strategy Details</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="strategy-name">Strategy Name</Label>
-              <Input
-                id="strategy-name"
-                value={state.tempStrategyName}
-                onChange={(e) => state.setTempStrategyName(e.target.value)}
-                placeholder="Enter strategy name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Trading Pairs</Label>
-              {state.tempSelectedPairs.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {state.tempSelectedPairs.map((pair) => (
-                    <div
-                      key={pair}
-                      className="flex items-center gap-1 px-2 py-1 text-sm rounded-md bg-primary/10 text-primary"
-                    >
-                      <span>{pair}</span>
-                      <button
-                        onClick={() => actions.handleTempRemovePair(pair)}
-                        className="hover:bg-primary/20 rounded-full p-0.5"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Popover open={state.pairPopoverOpen} onOpenChange={state.setPairPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 w-full bg-transparent">
-                    <Plus className="h-4 w-4" />
-                    Add Trading Pair
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="start">
-                  <div className="flex flex-col gap-1 max-h-60 overflow-auto">
-                    {tradingPairs
-                      .filter((pair) => !state.tempSelectedPairs.includes(pair))
-                      .map((pair) => (
-                        <button
-                          key={pair}
-                          onClick={() => actions.handleTempAddPair(pair)}
-                          className="text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
-                        >
-                          {pair}
-                        </button>
-                      ))}
-                    {tradingPairs.filter((pair) => !state.tempSelectedPairs.includes(pair)).length === 0 && (
-                      <p className="text-sm text-muted-foreground px-3 py-2">All pairs selected</p>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+      <DetailsDialog
+        open={state.detailsDialogOpen}
+        onOpenChange={state.setDetailsDialogOpen}
+        tempStrategyName={state.tempStrategyName}
+        setTempStrategyName={state.setTempStrategyName}
+        tempSelectedPairs={state.tempSelectedPairs}
+        setTempSelectedPairs={state.setTempSelectedPairs}
+        tempRunIntervalMinutes={state.tempRunIntervalMinutes}
+        setTempRunIntervalMinutes={state.setTempRunIntervalMinutes}
+        tempMaximumExecuteCount={state.tempMaximumExecuteCount}
+        setTempMaximumExecuteCount={state.setTempMaximumExecuteCount}
+        tempIntervalBetweenExecutionsMinutes={state.tempIntervalBetweenExecutionsMinutes}
+        setTempIntervalBetweenExecutionsMinutes={state.setTempIntervalBetweenExecutionsMinutes}
+        tempMaximumOpenPositions={state.tempMaximumOpenPositions}
+        setTempMaximumOpenPositions={state.setTempMaximumOpenPositions}
+        pairPopoverOpen={state.pairPopoverOpen}
+        setPairPopoverOpen={state.setPairPopoverOpen}
+        onAddPair={actions.handleTempAddPair}
+        onRemovePair={actions.handleTempRemovePair}
+        onDone={actions.handleDetailsDialogDone}
+      />
 
-            {/* Execution Options */}
-            <div className="border-t pt-4 mt-4">
-              <Label className="text-sm font-medium mb-3 block">Execution Options</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="run-interval" className="text-xs text-muted-foreground">Check every</Label>
-                  <Select
-                    value={String(state.tempRunIntervalMinutes)}
-                    onValueChange={(value) => state.setTempRunIntervalMinutes(Number(value))}
-                  >
-                    <SelectTrigger id="run-interval" className="h-8 text-xs w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {runIntervalOptions.map((option) => (
-                        <SelectItem key={option.value} value={String(option.value)}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="max-executions" className="text-xs text-muted-foreground">Maximum Executions</Label>
-                  <Input
-                    id="max-executions"
-                    type="number"
-                    min={1}
-                    value={state.tempMaximumExecuteCount}
-                    onChange={(e) => state.setTempMaximumExecuteCount(Number(e.target.value) || 1)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="interval-between" className="text-xs text-muted-foreground">Wait Between Executions</Label>
-                  <Select
-                    value={String(state.tempIntervalBetweenExecutionsMinutes)}
-                    onValueChange={(value) => state.setTempIntervalBetweenExecutionsMinutes(Number(value))}
-                  >
-                    <SelectTrigger id="interval-between" className="h-8 text-xs w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {runIntervalOptions.map((option) => (
-                        <SelectItem key={option.value} value={String(option.value)}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="max-positions" className="text-xs text-muted-foreground">Max Open Positions</Label>
-                  <Input
-                    id="max-positions"
-                    type="number"
-                    min={1}
-                    value={state.tempMaximumOpenPositions}
-                    onChange={(e) => state.setTempMaximumOpenPositions(Number(e.target.value) || 1)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
+      <ImportDialog
+        open={state.importDialogOpen}
+        onOpenChange={state.setImportDialogOpen}
+        importJson={state.importJson}
+        setImportJson={state.setImportJson}
+        importError={state.importError}
+        setImportError={state.setImportError}
+        onImport={actions.handleImportStrategy}
+      />
 
-            <div className="flex justify-end pt-2">
-              <Button size="sm" onClick={actions.handleDetailsDialogDone}>
-                Done
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AIDialog
+        open={state.aiDialogOpen}
+        onOpenChange={state.setAiDialogOpen}
+        selectedAIModel={state.selectedAIModel}
+        setSelectedAIModel={state.setSelectedAIModel}
+        supportedAIModels={supportedAIModels}
+        aiPrompt={state.aiPrompt}
+        setAiPrompt={state.setAiPrompt}
+        aiIsLoading={state.aiIsLoading}
+        aiError={state.aiError}
+        setAiError={state.setAiError}
+        aiGeneratedJson={state.aiGeneratedJson}
+        setAiGeneratedJson={state.setAiGeneratedJson}
+        onGenerateStrategy={async () => {
+          if (!callAIFunction || !state.aiPrompt.trim() || !state.selectedAIModel) return
+          state.setAiIsLoading(true)
+          state.setAiError(null)
+          state.setAiGeneratedJson("")
+          try {
+            const systemPrompt = STATIC_SYSTEM_PROMPT_V1(
+              tradingPairs,
+              indicatorOptions.map(option => option.name),
+              candleOptions,
+              unitOptions,
+              leverageOptions.map(option => option.label),
+              state.customBlockConfigs
+            )
+            const result = await callAIFunction(systemPrompt, [state.aiPrompt], state.selectedAIModel)
+            state.setAiGeneratedJson(result)
+          } catch (error) {
+            state.setAiError(error instanceof Error ? error.message : "Failed to generate strategy")
+          } finally {
+            state.setAiIsLoading(false)
+          }
+        }}
+        onUseStrategy={() => {
+          try {
+            const parsed = JSON.parse(state.aiGeneratedJson)
+            actions.loadStrategyFromJson(parsed)
+            state.setAiDialogOpen(false)
+            state.setAiPrompt("")
+            state.setAiGeneratedJson("")
+            state.setAiError(null)
+          } catch (error) {
+            state.setAiError("Invalid JSON format. Please check the generated output.")
+          }
+        }}
+      />
 
-      {state.importDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Import Strategy</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  state.setImportDialogOpen(false)
-                  state.setImportJson("")
-                  state.setImportError(null)
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Paste a valid strategy JSON to import it into the builder.
-            </p>
-            <Textarea
-              value={state.importJson}
-              onChange={(e) => state.setImportJson(e.target.value)}
-              placeholder='{"strategyId": "...", "strategyName": "...", "symbols": [...], "rules": [...]}'
-              className="min-h-[300px] max-h-[450px] font-mono text-sm overflow-y-auto"
-            />
-            {state.importError && <p className="mt-2 text-sm text-destructive">{state.importError}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  state.setImportDialogOpen(false)
-                  state.setImportJson("")
-                  state.setImportError(null)
-                }}
-                className="bg-transparent"
-              >
-                Cancel
-              </Button>
-              <Button size="sm" onClick={actions.handleImportStrategy}>
-                Import Strategy
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {state.aiDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                AI Strategy Builder
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  state.setAiDialogOpen(false)
-                  state.setAiPrompt("")
-                  state.setAiGeneratedJson("")
-                  state.setAiError(null)
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Describe your trading strategy in natural language and let AI generate it for you.
-            </p>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="ai-model">AI Model</Label>
-                <Select value={state.selectedAIModel} onValueChange={state.setSelectedAIModel}>
-                  <SelectTrigger id="ai-model">
-                    <SelectValue placeholder="Select an AI model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {supportedAIModels.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ai-prompt">Strategy Description</Label>
-                <Textarea
-                  id="ai-prompt"
-                  value={state.aiPrompt}
-                  onChange={(e) => state.setAiPrompt(e.target.value)}
-                  placeholder="Example: Create a strategy that opens a long position when RSI crosses above 30 and the price is above the 50-day moving average. Close the position when RSI goes above 70."
-                  className="min-h-[120px]"
-                />
-              </div>
-
-              <Button
-                size="sm"
-                onClick={async () => {
-                  if (!callAIFunction || !state.aiPrompt.trim() || !state.selectedAIModel) return
-                  state.setAiIsLoading(true)
-                  state.setAiError(null)
-                  state.setAiGeneratedJson("")
-                  try {
-                    const systemPrompt = STATIC_SYSTEM_PROMPT_V1(
-                      tradingPairs,
-                      indicatorOptions.map(option => option.name),
-                      candleOptions,
-                      unitOptions,
-                      leverageOptions.map(option => option.label),
-                      state.customBlockConfigs
-                    )
-                    const result = await callAIFunction(systemPrompt, [state.aiPrompt], state.selectedAIModel)
-                    state.setAiGeneratedJson(result)
-                  } catch (error) {
-                    state.setAiError(error instanceof Error ? error.message : "Failed to generate strategy")
-                  } finally {
-                    state.setAiIsLoading(false)
-                  }
-                }}
-                disabled={state.aiIsLoading || !state.aiPrompt.trim() || !state.selectedAIModel}
-                className="w-full gap-2"
-              >
-                {state.aiIsLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    Generate Strategy
-                  </>
-                )}
-              </Button>
-
-              {state.aiError && <p className="text-sm text-destructive">{state.aiError}</p>}
-
-              {state.aiGeneratedJson && (
-                <div className="space-y-2">
-                  <Label>Generated Strategy JSON</Label>
-                  <Textarea
-                    value={state.aiGeneratedJson}
-                    onChange={(e) => state.setAiGeneratedJson(e.target.value)}
-                    className="min-h-[200px] font-mono text-sm"
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        state.setAiDialogOpen(false)
-                        state.setAiPrompt("")
-                        state.setAiGeneratedJson("")
-                        state.setAiError(null)
-                      }}
-                      className="bg-transparent"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        try {
-                          const parsed = JSON.parse(state.aiGeneratedJson)
-                          actions.loadStrategyFromJson(parsed)
-                          state.setAiDialogOpen(false)
-                          state.setAiPrompt("")
-                          state.setAiGeneratedJson("")
-                          state.setAiError(null)
-                        } catch (error) {
-                          state.setAiError("Invalid JSON format. Please check the generated output.")
-                        }
-                      }}
-                    >
-                      Use Strategy
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {state.templatesDialogOpen && predefinedStrategies.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-2xl rounded-lg bg-card p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Strategy Templates</h3>
-              <Button variant="ghost" size="sm" onClick={() => state.setTemplatesDialogOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Select a predefined strategy template to get started quickly.
-            </p>
-            {predefinedStrategies.length === 0 ? (
-              <div className="py-12 text-center">
-                <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No templates available yet.</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Check back later for predefined strategy templates.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[400px] overflow-auto">
-                {predefinedStrategies.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => actions.handleSelectTemplate(template)}
-                    className="w-full text-left p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <h4 className="font-medium text-foreground">{template.name}</h4>
-                    <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
-                    <div className="flex gap-2 mt-2">
-                      {template.strategy.rules.slice(0, 3).map((rule, index) => (
-                        <span key={index} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                          {rule.name}
-                        </span>
-                      ))}
-                      {template.strategy.rules.length > 3 && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
-                          +{template.strategy.rules.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="mt-4 flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => state.setTemplatesDialogOpen(false)}
-                className="bg-transparent"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TemplatesDialog
+        open={state.templatesDialogOpen}
+        onOpenChange={state.setTemplatesDialogOpen}
+        predefinedStrategies={predefinedStrategies}
+        onSelectTemplate={actions.handleSelectTemplate}
+      />
 
       <Dialog open={state.mobileBlockPickerOpen} onOpenChange={state.setMobileBlockPickerOpen}>
         <DialogContent className="max-w-md">
