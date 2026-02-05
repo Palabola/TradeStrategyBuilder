@@ -14,7 +14,7 @@ import { agentService, supportedModels } from "../../lib/agent-service"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
 import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig, StrategyBuilder} from "@palabola86/trade-strategy-builder"
 import { AnalysisPanel } from "@/components/analysis-panel"
-import { useStrategyOptionsStore } from "@/lib/stores/strategy-options-store"
+import { useStrategyOptionsStore } from "@/stores/strategy-options-store"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
