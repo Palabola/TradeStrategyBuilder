@@ -1,11 +1,6 @@
-import { CandleService, type Candle } from "./candle-service"
+import { type Candle } from "./candle-service"
 
 export class IndicatorsService {
-  private candleService: CandleService
-
-  constructor(candleService?: CandleService) {
-    this.candleService = candleService || new CandleService()
-  }
 
   /**
    * Calculate Exponential Moving Average (EMA) for a given period

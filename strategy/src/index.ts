@@ -46,5 +46,8 @@ export type {
     StrategyActionsReturn,
 } from "./hooks"
 
+// Stores for advanced customization
+export { useAIBuilderStore } from "./stores/ai-builder-store"
+
 // UI Components (optional - consumers might want to use them)
 export * from "./components/ui"

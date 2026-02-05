@@ -1,55 +1,97 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Label } from "../ui/label"
 import { Textarea } from "../ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Sparkles, Loader2, X } from "lucide-react"
+import { useAIBuilderStore } from "../../stores/ai-builder-store"
+import { useMutation } from "@tanstack/react-query"
 
 interface AIDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  selectedAIModel: string
-  setSelectedAIModel: (model: string) => void
   supportedAIModels: string[]
-  aiPrompt: string
-  setAiPrompt: (prompt: string) => void
-  aiIsLoading: boolean
-  aiError: string | null
-  setAiError: (error: string | null) => void
-  aiGeneratedJson: string
-  setAiGeneratedJson: (json: string) => void
-  onGenerateStrategy: () => Promise<void>
+  callAIFunction: (systemPrompt: string, userPrompts: string[], model: string) => Promise<string>
   onUseStrategy: () => void
+}
+
+interface GenerateStrategyParams {
+  systemPrompt: string
+  userPrompt: string
+  model: string
 }
 
 export function AIDialog({
   open,
   onOpenChange,
-  selectedAIModel,
-  setSelectedAIModel,
   supportedAIModels,
-  aiPrompt,
-  setAiPrompt,
-  aiIsLoading,
-  aiError,
-  setAiError,
-  aiGeneratedJson,
-  setAiGeneratedJson,
-  onGenerateStrategy,
+  callAIFunction,
   onUseStrategy,
 }: AIDialogProps) {
+  const {
+    selectedAIModel,
+    setSelectedAIModel,
+    aiPrompt,
+    setAiPrompt,
+    aiSystemPrompt,
+    aiGeneratedJson,
+    setAiGeneratedJson,
+    reset,
+  } = useAIBuilderStore()
+
+  // Local error state for JSON parse errors
+  const [parseError, setParseError] = useState<string | null>(null)
+
+  // React Query mutation for AI strategy generation
+  const generateMutation = useMutation({
+    mutationFn: async ({ systemPrompt, userPrompt, model }: GenerateStrategyParams) => {
+      return await callAIFunction(systemPrompt, [userPrompt], model)
+    },
+    onSuccess: (result) => {
+      setAiGeneratedJson(result)
+      setParseError(null)
+    },
+  })
+
   const handleClose = () => {
     onOpenChange(false)
-    setAiPrompt("")
-    setAiGeneratedJson("")
-    setAiError(null)
+    generateMutation.reset()
+    setParseError(null)
+    setAiGeneratedJson('')
   }
+
+  const handleGenerateStrategy = () => {
+    if (!aiPrompt.trim() || !selectedAIModel || !aiSystemPrompt) return
+    setParseError(null)
+    
+    generateMutation.mutate({
+      systemPrompt: aiSystemPrompt,
+      userPrompt: aiPrompt,
+      model: selectedAIModel,
+    })
+  }
+
+  const handleUseStrategy = () => {
+    try {
+      onUseStrategy()
+    } catch (error) {
+      setParseError(error instanceof Error ? error.message : "Invalid JSON format. Please check the generated output.")
+    }
+  }
+
+  const isLoading = generateMutation.isPending
+  const error = generateMutation.error || parseError
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto" 
+        showCloseButton={false}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -57,10 +99,10 @@ export function AIDialog({
               AI Strategy Builder
             </div>
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-            >
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+                >
               <X className="h-4 w-4" />
             </Button>
           </DialogTitle>
@@ -99,11 +141,11 @@ export function AIDialog({
 
           <Button
             size="sm"
-            onClick={onGenerateStrategy}
-            disabled={aiIsLoading || !aiPrompt.trim() || !selectedAIModel}
+            onClick={handleGenerateStrategy}
+            disabled={isLoading || !aiPrompt.trim() || !selectedAIModel}
             className="w-full gap-2"
           >
-            {aiIsLoading ? (
+            {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Generating...
@@ -116,7 +158,11 @@ export function AIDialog({
             )}
           </Button>
 
-          {aiError && <p className="text-sm text-destructive">{aiError}</p>}
+          {error && (
+            <p className="text-sm text-destructive">
+              {typeof error === 'string' ? error : (error instanceof Error ? error.message : "Failed to generate strategy")}
+            </p>
+          )}
 
           {aiGeneratedJson && (
             <div className="space-y-2">
@@ -135,7 +181,7 @@ export function AIDialog({
                 >
                   Cancel
                 </Button>
-                <Button size="sm" onClick={onUseStrategy}>
+                <Button size="sm" onClick={handleUseStrategy}>
                   Use Strategy
                 </Button>
               </div>

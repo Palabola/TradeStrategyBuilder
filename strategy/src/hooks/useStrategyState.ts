@@ -91,7 +91,6 @@ export interface UseStrategyStateProps {
   indicatorOptions: IndicatorOption[]
   unitOptions: string[]
   initialStrategyId?: string
-  supportedAIModels: string[]
 }
 
 export interface StrategyStateReturn {
@@ -135,26 +134,14 @@ export interface StrategyStateReturn {
   setTemplatesDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   detailsDialogOpen: boolean
   setDetailsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  aiDialogOpen: boolean
+  setAiDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
 
   // Mobile block picker
   mobileBlockPickerOpen: boolean
   setMobileBlockPickerOpen: React.Dispatch<React.SetStateAction<boolean>>
   mobileBlockPickerTarget: { groupId: string; category: BlockCategory } | null
   setMobileBlockPickerTarget: React.Dispatch<React.SetStateAction<{ groupId: string; category: BlockCategory } | null>>
-
-  // AI Builder state
-  aiDialogOpen: boolean
-  setAiDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
-  selectedAIModel: string
-  setSelectedAIModel: React.Dispatch<React.SetStateAction<string>>
-  aiPrompt: string
-  setAiPrompt: React.Dispatch<React.SetStateAction<string>>
-  aiGeneratedJson: string
-  setAiGeneratedJson: React.Dispatch<React.SetStateAction<string>>
-  aiIsLoading: boolean
-  setAiIsLoading: React.Dispatch<React.SetStateAction<boolean>>
-  aiError: string | null
-  setAiError: React.Dispatch<React.SetStateAction<string | null>>
 
   // Execution options state
   runIntervalMinutes: number
@@ -180,7 +167,6 @@ export function useStrategyState({
   indicatorOptions,
   unitOptions,
   initialStrategyId,
-  supportedAIModels,
 }: UseStrategyStateProps): StrategyStateReturn {
   // Create custom block configs with the provided options (memoized to prevent infinite loops)
   const customBlockConfigs = useMemo(
@@ -222,6 +208,7 @@ export function useStrategyState({
   const [importError, setImportError] = useState<string | null>(null)
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
 
   // Mobile block picker
   const [mobileBlockPickerOpen, setMobileBlockPickerOpen] = useState(false)
@@ -229,14 +216,6 @@ export function useStrategyState({
     groupId: string
     category: BlockCategory
   } | null>(null)
-
-  // AI Builder state
-  const [aiDialogOpen, setAiDialogOpen] = useState(false)
-  const [selectedAIModel, setSelectedAIModel] = useState<string>(supportedAIModels[0] || "")
-  const [aiPrompt, setAiPrompt] = useState("")
-  const [aiGeneratedJson, setAiGeneratedJson] = useState<string>("")
-  const [aiIsLoading, setAiIsLoading] = useState(false)
-  const [aiError, setAiError] = useState<string | null>(null)
 
   // Execution options state
   const [runIntervalMinutes, setRunIntervalMinutes] = useState<number>(DEFAULT_EXECUTION_OPTIONS.runIntervalMinutes)
@@ -290,26 +269,14 @@ export function useStrategyState({
     setTemplatesDialogOpen,
     detailsDialogOpen,
     setDetailsDialogOpen,
+    aiDialogOpen,
+    setAiDialogOpen,
 
     // Mobile block picker
     mobileBlockPickerOpen,
     setMobileBlockPickerOpen,
     mobileBlockPickerTarget,
     setMobileBlockPickerTarget,
-
-    // AI Builder state
-    aiDialogOpen,
-    setAiDialogOpen,
-    selectedAIModel,
-    setSelectedAIModel,
-    aiPrompt,
-    setAiPrompt,
-    aiGeneratedJson,
-    setAiGeneratedJson,
-    aiIsLoading,
-    setAiIsLoading,
-    aiError,
-    setAiError,
 
     // Execution options state
     runIntervalMinutes,

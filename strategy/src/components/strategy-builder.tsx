@@ -36,6 +36,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
 import { BlockConfig, BlockType, CustomTheme, StrategyBuilderProps } from "../types"
 import { useStrategyState } from "../hooks/useStrategyState"
 import { useStrategyActions } from "../hooks/useStrategyActions"
+import { useAIBuilderStore } from "../stores/ai-builder-store"
+import { StrategyBuilderQueryProvider } from "./query-provider"
 
 export function StrategyBuilder({
   initialStrategy,
@@ -57,8 +59,10 @@ export function StrategyBuilder({
     indicatorOptions,
     unitOptions,
     initialStrategyId: initialStrategy?.strategyId,
-    supportedAIModels,
   })
+
+  // Use the AI Builder store
+  const aiStore = useAIBuilderStore()
 
   // Use the custom actions hook
   const actions = useStrategyActions({
@@ -94,6 +98,21 @@ export function StrategyBuilder({
     onSave,
     onStrategyChange,
   })
+
+  // Initialize AI store with default model and system prompt
+  useEffect(() => {
+    if (supportedAIModels.length > 0) {
+      const systemPrompt = STATIC_SYSTEM_PROMPT_V1(
+        tradingPairs,
+        indicatorOptions.map(option => option.name),
+        candleOptions,
+        unitOptions,
+        leverageOptions.map(option => option.label),
+        state.customBlockConfigs
+      )
+      aiStore.initialize(supportedAIModels[0],systemPrompt)
+    }
+  }, [supportedAIModels, indicatorOptions, candleOptions, unitOptions, state.customBlockConfigs])
 
   // Load initial strategy
   useEffect(() => {
@@ -139,12 +158,13 @@ export function StrategyBuilder({
   const id = useId()
 
   return (
-    <DndContext sensors={sensors} onDragStart={actions.handleDragStart} onDragEnd={actions.handleDragEnd} id={id}>
-      <div className="flex flex-col gap-4 w-full">
-        <div className="flex flex-wrap lg:justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={actions.handleReset} className="gap-2 bg-transparent">
-            <RotateCcw className="h-4 w-4" />
-            Reset
+    <StrategyBuilderQueryProvider>
+      <DndContext sensors={sensors} onDragStart={actions.handleDragStart} onDragEnd={actions.handleDragEnd} id={id}>
+        <div className="flex flex-col gap-4 w-full">
+          <div className="flex flex-wrap lg:justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={actions.handleReset} className="gap-2 bg-transparent">
+              <RotateCcw className="h-4 w-4" />
+              Reset
           </Button>
           {predefinedStrategies.length > 0 && (
             <Button
@@ -350,54 +370,19 @@ export function StrategyBuilder({
         onImport={actions.handleImportStrategy}
       />
 
-      <AIDialog
-        open={state.aiDialogOpen}
-        onOpenChange={state.setAiDialogOpen}
-        selectedAIModel={state.selectedAIModel}
-        setSelectedAIModel={state.setSelectedAIModel}
-        supportedAIModels={supportedAIModels}
-        aiPrompt={state.aiPrompt}
-        setAiPrompt={state.setAiPrompt}
-        aiIsLoading={state.aiIsLoading}
-        aiError={state.aiError}
-        setAiError={state.setAiError}
-        aiGeneratedJson={state.aiGeneratedJson}
-        setAiGeneratedJson={state.setAiGeneratedJson}
-        onGenerateStrategy={async () => {
-          if (!callAIFunction || !state.aiPrompt.trim() || !state.selectedAIModel) return
-          state.setAiIsLoading(true)
-          state.setAiError(null)
-          state.setAiGeneratedJson("")
-          try {
-            const systemPrompt = STATIC_SYSTEM_PROMPT_V1(
-              tradingPairs,
-              indicatorOptions.map(option => option.name),
-              candleOptions,
-              unitOptions,
-              leverageOptions.map(option => option.label),
-              state.customBlockConfigs
-            )
-            const result = await callAIFunction(systemPrompt, [state.aiPrompt], state.selectedAIModel)
-            state.setAiGeneratedJson(result)
-          } catch (error) {
-            state.setAiError(error instanceof Error ? error.message : "Failed to generate strategy")
-          } finally {
-            state.setAiIsLoading(false)
-          }
-        }}
-        onUseStrategy={() => {
-          try {
-            const parsed = JSON.parse(state.aiGeneratedJson)
+      {callAIFunction && (
+        <AIDialog
+          open={state.aiDialogOpen}
+          onOpenChange={state.setAiDialogOpen}
+          supportedAIModels={supportedAIModels}
+          callAIFunction={callAIFunction}
+          onUseStrategy={() => {
+            const parsed = JSON.parse(aiStore.aiGeneratedJson)
             actions.loadStrategyFromJson(parsed)
             state.setAiDialogOpen(false)
-            state.setAiPrompt("")
-            state.setAiGeneratedJson("")
-            state.setAiError(null)
-          } catch (error) {
-            state.setAiError("Invalid JSON format. Please check the generated output.")
-          }
-        }}
-      />
+          }}
+        />
+      )}
 
       <TemplatesDialog
         open={state.templatesDialogOpen}
@@ -445,6 +430,7 @@ export function StrategyBuilder({
         )}
       </DragOverlay>
     </DndContext>
+    </StrategyBuilderQueryProvider>
   )
 }
 

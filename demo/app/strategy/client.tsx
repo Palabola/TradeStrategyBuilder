@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Settings, Plus, X, BarChart3, DollarSign, Banknote, Bell } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { agentService, supportedModels } from "../../lib/agent-service"
-import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
 import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig, StrategyBuilder} from "@palabola86/trade-strategy-builder"
 import { AnalysisPanel } from "@/components/analysis-panel"
+import { useStrategyOptionsStore } from "@/lib/stores/strategy-options-store"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -142,14 +142,29 @@ export function StrategyPageClient({
   const [themeOption, setThemeOption] = useState<ThemeOption>("none")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   
-  // Candle options state
-  const [candleOptions, setCandleOptions] = useState<string[]>(initialCandleOptions || [])
-  const [newCandle, setNewCandle] = useState("")
-  
-  // Indicator options state
-  const [indicatorOptions, setIndicatorOptions] = useState<IndicatorOption[]>(initialIndicatorOptions || [])
-  const [newIndicatorName, setNewIndicatorName] = useState("")
-  const [newIndicatorCategory, setNewIndicatorCategory] = useState("price")
+  // Zustand store for candle and indicator options
+  const {
+    candleOptions,
+    newCandle,
+    indicatorOptions,
+    newIndicatorName,
+    newIndicatorCategory,
+    setNewCandle,
+    addCandleOption,
+    removeCandleOption,
+    resetCandleOptions,
+    setNewIndicatorName,
+    setNewIndicatorCategory,
+    addIndicatorOption,
+    removeIndicatorOption,
+    resetIndicatorOptions,
+    initialize,
+  } = useStrategyOptionsStore()
+
+  // Initialize store with props on mount
+  useEffect(() => {
+    initialize(initialCandleOptions, initialIndicatorOptions)
+  }, [initialCandleOptions, initialIndicatorOptions, initialize])
 
   // Strategy deploy state
   const [showDeployDialog, setShowDeployDialog] = useState(false)
@@ -342,38 +357,6 @@ export function StrategyPageClient({
         return initialThemeOverride ?? undefined
     }
   }, [themeOption, initialThemeOverride])
-
-  // Candle options handlers
-  const addCandleOption = () => {
-    if (newCandle.trim() && !candleOptions.includes(newCandle.trim())) {
-      setCandleOptions([...candleOptions, newCandle.trim()])
-      setNewCandle("")
-    }
-  }
-
-  const removeCandleOption = (candle: string) => {
-    setCandleOptions(candleOptions.filter(c => c !== candle))
-  }
-
-  const resetCandleOptions = () => {
-    setCandleOptions(supportedTimeframes)
-  }
-
-  // Indicator options handlers
-  const addIndicatorOption = () => {
-    if (newIndicatorName.trim() && !indicatorOptions.some(i => i.name === newIndicatorName.trim())) {
-      setIndicatorOptions([...indicatorOptions, { name: newIndicatorName.trim(), category: newIndicatorCategory }])
-      setNewIndicatorName("")
-    }
-  }
-
-  const removeIndicatorOption = (name: string) => {
-    setIndicatorOptions(indicatorOptions.filter(i => i.name !== name))
-  }
-
-  const resetIndicatorOptions = () => {
-    setIndicatorOptions(supportedIndicators)
-  }
 
   // Memoize config options to prevent unnecessary re-renders
   const configOptions = useMemo(() => ({
