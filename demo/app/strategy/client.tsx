@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getStrategyById, saveDraftStrategyToStorage, saveStrategyToStorage } from "@/lib/strategy-storage"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -14,7 +13,9 @@ import { agentService, supportedModels } from "../../lib/agent-service"
 import { predefinedStrategies } from "../../lib/predefined-strategies"
 import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig, StrategyBuilder} from "@palabola86/trade-strategy-builder"
 import { AnalysisPanel } from "@/components/analysis-panel"
-import { useStrategyOptionsStore } from "@/stores/strategy-options-store"
+import { useStrategyOptionsStore } from "@/lib/stores/strategy-options-store"
+import { useStrategyDraftStore } from "@/lib/stores/strategy-draft-store"
+import { useSavedStrategiesStore } from "../../lib/stores/saved-strategies-store"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -160,6 +161,10 @@ export function StrategyPageClient({
     resetIndicatorOptions,
     initialize,
   } = useStrategyOptionsStore()
+
+  // Zustand store for strategy draft
+  const { draft: draftStrategy, setDraft } = useStrategyDraftStore()
+  const strategyStore = useSavedStrategiesStore()
 
   // Initialize store with props on mount
   useEffect(() => {
@@ -327,14 +332,14 @@ export function StrategyPageClient({
 
   // Save strategy handler
   const handleSave = useCallback((strategy: StrategyTemplate) => {
-    saveStrategyToStorage(strategy)
+    strategyStore.addStrategy(strategy)
     setShowDeployDialog(true)
   }, [])
 
   // Handle strategy changes from the builder
   const handleStrategyChange = useCallback((strategy: StrategyTemplate | null) => {
     setCurrentStrategy(strategy)
-    saveDraftStrategyToStorage(strategy)
+    setDraft(strategy)
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI
@@ -364,25 +369,10 @@ export function StrategyPageClient({
     ...customBlockConfigs
   }), [customBlockConfigs])
 
-  // Effective initial strategy - either from props or localStorage draft
-  const [effectiveInitialStrategy, setEffectiveInitialStrategy] = useState<StrategyTemplate | undefined>(initialStrategy)
-
-  // Load draft strategy from localStorage if no initialStrategy provided
-  useEffect(() => {
-    if (!initialStrategy) {
-      try {
-        const draft = localStorage.getItem('strategy-draft')
-        if (draft) {
-          const parsedDraft = JSON.parse(draft) as StrategyTemplate
-          setEffectiveInitialStrategy(parsedDraft)
-        }
-      } catch (error) {
-        console.warn('Failed to load strategy draft from localStorage:', error)
-      }
-    } else {
-      setEffectiveInitialStrategy(initialStrategy)
-    }
-  }, [initialStrategy])
+  // Effective initial strategy - either from props or draft store
+  const effectiveInitialStrategy = useMemo(() => {
+    return initialStrategy || draftStrategy || undefined
+  }, [initialStrategy, draftStrategy])
 
   return (
     <div className="relative">

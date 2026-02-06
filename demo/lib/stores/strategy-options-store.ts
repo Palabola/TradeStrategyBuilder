@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { IndicatorOption } from '@palabola86/trade-strategy-builder'
-import { supportedTimeframes, supportedIndicators } from '../lib/strategy-runner'
+import { supportedTimeframes, supportedIndicators } from '../strategy-runner'
 
 interface StrategyOptionsState {
   // Candle options

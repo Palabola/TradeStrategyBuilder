@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,21 +15,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { getSavedStrategies, removeStrategyFromStorage } from "@/lib/strategy-storage"
 import { Plus, Play, Edit, Trash2, FileText, Sparkles } from "lucide-react"
 import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { predefinedStrategies } from "@/lib/predefined-strategies"
 import { useRouter } from "next/navigation"
+import { useSavedStrategiesStore } from "@/lib/stores/saved-strategies-store"
+import { useStrategyDraftStore } from "@/lib/stores/strategy-draft-store"
 
 export function StrategiesList() {
-  const [strategies, setStrategies] = useState<StrategyTemplate[]>([])
+  const strategies = useSavedStrategiesStore((state) => state.strategies)
+  const hasHydrated = useSavedStrategiesStore((state) => state._hasHydrated)
+  const removeStrategy = useSavedStrategiesStore((state) => state.removeStrategy)
+  const setDraft = useStrategyDraftStore((state) => state.setDraft)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [strategyToDelete, setStrategyToDelete] = useState<StrategyTemplate | null>(null)
   const router = useRouter()
-
-  useEffect(() => {
-    setStrategies(getSavedStrategies())
-  }, [])
 
   const handleDeleteClick = (strategy: StrategyTemplate) => {
     setStrategyToDelete(strategy)
@@ -38,29 +38,20 @@ export function StrategiesList() {
 
   const handleConfirmDelete = () => {
     if (strategyToDelete?.strategyId) {
-      removeStrategyFromStorage(strategyToDelete.strategyId)
-      setStrategies(getSavedStrategies())
+      removeStrategy(strategyToDelete.strategyId)
     }
     setDeleteDialogOpen(false)
     setStrategyToDelete(null)
   }
 
   const handleSelectPredefinedStrategy = (strategy: StrategyTemplate) => {
-    try {
-      localStorage.setItem('strategy-draft', JSON.stringify(strategy))
-      router.push('/strategy')
-    } catch (error) {
-      console.warn('Failed to save strategy draft to localStorage:', error)
-    }
+    setDraft(strategy)
+    router.push('/strategy')
   }
 
   const handleBlankStrategyClick = () => {
-    try {
-      localStorage.removeItem('strategy-draft')
-      router.push('/strategy')
-    } catch (error) {
-      console.warn('Failed to clear strategy draft from localStorage:', error)
-    }
+    setDraft(null)
+    router.push('/strategy')
   }
 
   return (
@@ -73,7 +64,11 @@ export function StrategiesList() {
         </Button>
       </CardHeader>
       <CardContent>
-        {strategies.length === 0 ? (
+        {!hasHydrated ? (
+          <div className="py-12 text-center text-muted-foreground">
+            Loading strategies...
+          </div>
+        ) : strategies.length === 0 ? (
           <div className="py-12">
             <div className="xl:max-w-[1200px] mx-auto">
               <h3 className="text-lg font-semibold mb-2">Choose your first strategy</h3>

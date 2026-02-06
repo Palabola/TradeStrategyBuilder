@@ -5,11 +5,14 @@ import { Suspense } from "react"
 import { Header } from "@/components/header"
 import { StrategyPageClient } from "./client"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
-import { getStrategyById } from "../../lib/strategy-storage"
+import { useStrategyDraftStore } from "@/lib/stores/strategy-draft-store"
+import { useSavedStrategiesStore } from "../../lib/stores/saved-strategies-store"
 
 function StrategyContent() {
   const searchParams = useSearchParams()
   const strategyId = searchParams.get("strategyId") ?? undefined
+  const { draft } = useStrategyDraftStore()
+  const { getStrategyById } = useSavedStrategiesStore()
 
   const candleOptionsOverride = supportedTimeframes;
   const indicatorOptionsOverride = supportedIndicators;
@@ -17,11 +20,9 @@ function StrategyContent() {
   const channelOptionsOverride = ["Telemgram", "Email", "Notification"];
   const themeOverride = null;
 
-  const strategyDraft = typeof window !== 'undefined' ? localStorage.getItem('strategy-draft') : null;
-
   return (
     <StrategyPageClient
-      initialStrategy={strategyId ? getStrategyById(strategyId) : (strategyDraft ? JSON.parse(strategyDraft) : undefined)}
+      initialStrategy={strategyId ? getStrategyById(strategyId) : (draft || undefined)}
       candleOptions={candleOptionsOverride}
       indicatorOptions={indicatorOptionsOverride}
       unitOptions={unitOptionsOverride}

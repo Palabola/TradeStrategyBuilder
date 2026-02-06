@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getSavedStrategies } from "@/lib/strategy-storage"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +11,7 @@ import {
 } from "lucide-react"
 import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { AnalysisPanel } from "@/components/analysis-panel"
+import { useSavedStrategiesStore } from "@/lib/stores/saved-strategies-store"
 
 interface AnalyzePageClientProps {
   strategyId?: string
@@ -19,24 +19,21 @@ interface AnalyzePageClientProps {
 
 export function AnalyzePageClient({ strategyId }: AnalyzePageClientProps) {
   const router = useRouter()
+  const savedStrategies = useSavedStrategiesStore((state) => state.strategies)
   
   // Strategy state
-  const [savedStrategies, setSavedStrategies] = useState<StrategyTemplate[]>([])
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyTemplate | null>(null)
 
   // Load saved strategies on mount
   useEffect(() => {
-    const strategies = getSavedStrategies()
-    setSavedStrategies(strategies)
-    
     // If strategyId is provided in URL, load that strategy
     if (strategyId) {
-      const strategy = strategies.find(s => s.strategyId === strategyId)
+      const strategy = savedStrategies.find(s => s.strategyId === strategyId)
       if (strategy) {
         setSelectedStrategy(strategy)
       }
     }
-  }, [strategyId])
+  }, [strategyId, savedStrategies])
 
   // Handle strategy selection change
   const handleStrategyChange = (strategyId: string) => {
