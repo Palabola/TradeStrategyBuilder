@@ -20,13 +20,12 @@ import { StrategyTemplate } from "@palabola86/trade-strategy-builder"
 import { predefinedStrategies } from "@/lib/predefined-strategies"
 import { useRouter } from "next/navigation"
 import { useSavedStrategiesStore } from "@/lib/stores/saved-strategies-store"
-import { useStrategyDraftStore } from "@/lib/stores/strategy-draft-store"
+import { saveDraftStrategyToStorage } from "@/lib/strategy-storage"
 
 export function StrategiesList() {
   const strategies = useSavedStrategiesStore((state) => state.strategies)
   const hasHydrated = useSavedStrategiesStore((state) => state._hasHydrated)
   const removeStrategy = useSavedStrategiesStore((state) => state.removeStrategy)
-  const setDraft = useStrategyDraftStore((state) => state.setDraft)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [strategyToDelete, setStrategyToDelete] = useState<StrategyTemplate | null>(null)
   const router = useRouter()
@@ -45,12 +44,12 @@ export function StrategiesList() {
   }
 
   const handleSelectPredefinedStrategy = (strategy: StrategyTemplate) => {
-    setDraft(strategy)
+    saveDraftStrategyToStorage(strategy)
     router.push('/strategy')
   }
 
   const handleBlankStrategyClick = () => {
-    setDraft(null)
+    saveDraftStrategyToStorage(null)
     router.push('/strategy')
   }
 

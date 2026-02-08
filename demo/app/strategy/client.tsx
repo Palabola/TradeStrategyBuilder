@@ -14,8 +14,8 @@ import { predefinedStrategies } from "../../lib/predefined-strategies"
 import { CustomTheme, BlockType, blockConfigs, IndicatorOption, StrategyTemplate, BlockConfig, StrategyBuilder} from "@palabola86/trade-strategy-builder"
 import { AnalysisPanel } from "@/components/analysis-panel"
 import { useStrategyOptionsStore } from "@/lib/stores/strategy-options-store"
-import { useStrategyDraftStore } from "@/lib/stores/strategy-draft-store"
 import { useSavedStrategiesStore } from "../../lib/stores/saved-strategies-store"
+import { saveDraftStrategyToStorage, getDraftFromStorage } from "../../lib/strategy-storage"
 
 type ThemeOption = "none" | "grayscale" | "colored"
 
@@ -162,9 +162,17 @@ export function StrategyPageClient({
     initialize,
   } = useStrategyOptionsStore()
 
-  // Zustand store for strategy draft
-  const { draft: draftStrategy, setDraft } = useStrategyDraftStore()
+  // Strategy draft - using localStorage via strategy-storage
+  const [draftStrategy, setDraftStrategy] = useState<StrategyTemplate | null>(null)
   const strategyStore = useSavedStrategiesStore()
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const draft = getDraftFromStorage()
+    if (draft) {
+      setDraftStrategy(draft)
+    }
+  }, [])
 
   // Initialize store with props on mount
   useEffect(() => {
@@ -339,7 +347,7 @@ export function StrategyPageClient({
   // Handle strategy changes from the builder
   const handleStrategyChange = useCallback((strategy: StrategyTemplate | null) => {
     setCurrentStrategy(strategy)
-    setDraft(strategy)
+    saveDraftStrategyToStorage(strategy)
   }, [])
 
   // AI function wrapper - delegates to agentService.callAI

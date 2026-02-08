@@ -5,13 +5,12 @@ import { Suspense } from "react"
 import { Header } from "@/components/header"
 import { StrategyPageClient } from "./client"
 import { supportedIndicators, supportedTimeframes } from "../../lib/strategy-runner"
-import { useStrategyDraftStore } from "@/lib/stores/strategy-draft-store"
 import { useSavedStrategiesStore } from "../../lib/stores/saved-strategies-store"
+import { getDraftFromStorage } from "../../lib/strategy-storage"
 
 function StrategyContent() {
   const searchParams = useSearchParams()
   const strategyId = searchParams.get("strategyId") ?? undefined
-  const { draft } = useStrategyDraftStore()
   const { getStrategyById } = useSavedStrategiesStore()
 
   const candleOptionsOverride = supportedTimeframes;
@@ -22,7 +21,7 @@ function StrategyContent() {
 
   return (
     <StrategyPageClient
-      initialStrategy={strategyId ? getStrategyById(strategyId) : (draft || undefined)}
+      initialStrategy={strategyId ? getStrategyById(strategyId) : (getDraftFromStorage() )}
       candleOptions={candleOptionsOverride}
       indicatorOptions={indicatorOptionsOverride}
       unitOptions={unitOptionsOverride}
